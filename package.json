@@ -9,7 +9,7 @@
     "build": "astro build",
     "preview": "astro preview",
     "cf:dev": "wrangler pages dev ./dist",
-    "cf:deploy": "astro build && wrangler pages deploy ./dist"
+    "cf:deploy": "astro build && wrangler pages deploy ./dist --project-name margareth-ojt-tracker --branch main --force"
   },
   "dependencies": {
     "@astrojs/cloudflare": "^12.6.0",
