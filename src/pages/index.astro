@@ -160,10 +160,23 @@ const weekdayHeaders = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
           </button>
         </div>
 
-        <span class="tap-hint">Tap any weekday to edit its time or status</span>
+        <div class="toolbar-subrow">
+          <span class="tap-hint">Tap any weekday to edit its time or status</span>
+          <div class="layout-toggle" role="group" aria-label="Calendar Layout">
+            <button type="button" class="layout-btn active" data-cal-mode="grid">
+              Grid
+            </button>
+            <button type="button" class="layout-btn" data-cal-mode="list">
+              List
+            </button>
+          </div>
+        </div>
       </div>
 
-      <!-- Inline Day Editor (Opens when you click any weekday) -->
+      <!-- Mobile Backdrop for Day Editor Drawer -->
+      <div id="editor-backdrop" class="editor-backdrop" hidden></div>
+
+      <!-- Inline / Bottom-Sheet Day Editor (Opens when you click any weekday) -->
       <aside id="day-editor" class="day-editor" hidden>
         <div class="editor-top">
           <div>
@@ -275,7 +288,10 @@ const weekdayHeaders = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
               {m.days.map((day) => {
                 const isInteractive = !day.isWeekend && !day.isBeforeStart;
+                const niceTimeIn = formatTime12h(day.timeIn);
                 const niceTimeOut = formatTime12h(day.timeOut);
+                const shortMonth = m.name.slice(0, 3);
+                const wdName = weekdayHeaders[day.dayOfWeek];
                 return (
                   <button
                     type="button"
@@ -284,6 +300,7 @@ const weekdayHeaders = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
                       `state-${day.status}`,
                       {
                         'weekend-col': day.isWeekend,
+                        'before-start-day': day.isBeforeStart,
                         'is-asof': day.isAsOfDate,
                         'is-today': day.isCurrentDate,
                         'is-finish': day.isCompletionDay,
@@ -302,39 +319,78 @@ const weekdayHeaders = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
                     data-label={day.label || ''}
                   >
                     <div class="day-card-top">
-                      <span class="day-number tabular">{day.dayOfMonth}</span>
-                      {day.isAsOfDate && <span class="day-flag flag-asof">Oct 26</span>}
+                      <div class="day-title-group">
+                        <span class="day-number tabular">{day.dayOfMonth}</span>
+                        <span class="list-only-date tabular">
+                          {wdName}, {shortMonth} {day.dayOfMonth}
+                        </span>
+                        {day.workdayNumber && (
+                          <span class="list-only-wd tabular">#{day.workdayNumber}</span>
+                        )}
+                      </div>
+                      {day.isAsOfDate && (
+                        <span class="day-flag flag-asof">
+                          <span class="m-full">Oct 26</span>
+                          <span class="m-short">As Of</span>
+                        </span>
+                      )}
                       {day.isCurrentDate && <span class="day-flag flag-today">Today</span>}
-                      {day.isCompletionDay && <span class="day-flag flag-finish">Finish!</span>}
+                      {day.isCompletionDay && (
+                        <span class="day-flag flag-finish">
+                          <span class="m-full">Finish!</span>
+                          <span class="m-short">Grad</span>
+                        </span>
+                      )}
                     </div>
 
                     <div class="day-card-body">
                       {day.isCompletionDay ? (
                         <>
                           <span class="status-pill pill-finish tabular">{day.creditedHours.toFixed(1)}h</span>
-                          <span class="day-subtime tabular">{summary.finalDayClockOut}</span>
+                          <span class="day-subtime tabular">
+                            <span class="list-only-in">{niceTimeIn || '7:00 AM'} – </span>{summary.finalDayClockOut}
+                          </span>
                         </>
                       ) : day.status === 'full' ? (
-                        <span class="status-pill pill-full tabular">8.8h</span>
+                        <>
+                          <span class="status-pill pill-full tabular">8.8h</span>
+                          <span class="day-subtime list-only-shift tabular">7:00 AM – 4:48 PM</span>
+                        </>
                       ) : day.status === 'projected_full' ? (
-                        <span class="status-pill pill-projected tabular">+8.8h</span>
+                        <>
+                          <span class="status-pill pill-projected tabular">+8.8h</span>
+                          <span class="day-subtime list-only-shift tabular">7:00 AM – 4:48 PM</span>
+                        </>
                       ) : day.status === 'half_day' ? (
                         <>
                           <span class="status-pill pill-half tabular">{day.creditedHours.toFixed(1)}h</span>
-                          {niceTimeOut && <span class="day-subtime tabular">{niceTimeOut}</span>}
+                          {niceTimeOut && (
+                            <span class="day-subtime tabular">
+                              <span class="list-only-in">{niceTimeIn || '7:00 AM'} – </span>{niceTimeOut}
+                            </span>
+                          )}
                         </>
                       ) : day.status === 'early_out' || day.status === 'custom' ? (
                         <>
                           <span class="status-pill pill-early tabular">{day.creditedHours.toFixed(1)}h</span>
-                          {niceTimeOut && <span class="day-subtime tabular">{niceTimeOut}</span>}
+                          {niceTimeOut && (
+                            <span class="day-subtime tabular">
+                              <span class="list-only-in">{niceTimeIn || '7:00 AM'} – </span>{niceTimeOut}
+                            </span>
+                          )}
                         </>
                       ) : day.status === 'absent' ? (
                         <>
                           <span class="status-pill pill-absent">Absent</span>
-                          <span class="day-subtime tabular">0h</span>
+                          <span class="day-subtime tabular">
+                            0h<span class="list-only-in"> credited</span>
+                          </span>
                         </>
                       ) : day.status === 'holiday' ? (
-                        <span class="status-pill pill-holiday">Holiday</span>
+                        <>
+                          <span class="status-pill pill-holiday">Holiday</span>
+                          {day.label && <span class="day-subtime list-only-shift">{day.label}</span>}
+                        </>
                       ) : null}
                     </div>
                   </button>
@@ -738,6 +794,121 @@ const weekdayHeaders = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
     font-size: 0.78rem;
     color: var(--ink-secondary);
     font-weight: 700;
+  }
+
+  .toolbar-subrow {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+  }
+
+  .layout-toggle {
+    display: inline-flex;
+    background: var(--bg-paper-recessed);
+    padding: 2px;
+    border-radius: 8px;
+    border: 1px solid var(--ink-rule);
+    flex-shrink: 0;
+  }
+
+  .layout-btn {
+    padding: 0.25rem 0.65rem;
+    border-radius: 6px;
+    border: none;
+    background: transparent;
+    color: var(--ink-secondary);
+    font-family: inherit;
+    font-size: 0.74rem;
+    font-weight: 700;
+    cursor: pointer;
+  }
+
+  .layout-btn.active {
+    background: var(--bg-paper-elevated);
+    color: var(--ink-primary);
+    box-shadow: var(--shadow-slot);
+  }
+
+  .list-only-date,
+  .list-only-wd,
+  .list-only-shift,
+  .list-only-in {
+    display: none;
+  }
+
+  .day-title-group {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 0.45rem;
+    min-width: 0;
+  }
+
+  /* List Mode (Agenda View for any month) */
+  .months-container.mode-list .weekday-row,
+  .months-container.mode-list .day-empty,
+  .months-container.mode-list .weekend-col,
+  .months-container.mode-list .before-start-day {
+    display: none !important;
+  }
+
+  .months-container.mode-list .days-grid {
+    grid-template-columns: 1fr !important;
+    gap: 0.45rem;
+  }
+
+  .months-container.mode-list .day-card {
+    min-height: 50px;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.65rem 0.9rem;
+    border-radius: 10px;
+  }
+
+  .months-container.mode-list .day-number {
+    display: none;
+  }
+
+  .months-container.mode-list .list-only-date {
+    display: inline;
+    font-size: 0.88rem;
+    font-weight: 800;
+    color: var(--ink-primary);
+  }
+
+  .months-container.mode-list .list-only-wd {
+    display: inline;
+    font-size: 0.74rem;
+    font-weight: 700;
+    color: var(--ink-secondary);
+  }
+
+  .months-container.mode-list .list-only-shift,
+  .months-container.mode-list .list-only-in {
+    display: inline;
+  }
+
+  .months-container.mode-list .day-card-top {
+    justify-content: flex-start;
+    gap: 0.4rem;
+    white-space: nowrap;
+  }
+
+  .months-container.mode-list .day-title-group {
+    gap: 0.35rem;
+    white-space: nowrap;
+  }
+
+  .months-container.mode-list .day-card-body {
+    flex-direction: row-reverse;
+    align-items: center;
+    gap: 0.55rem;
+    flex-shrink: 0;
+  }
+
+  .editor-backdrop {
+    display: none;
   }
 
   /* Inline Day Editor */
@@ -1371,14 +1542,32 @@ const weekdayHeaders = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
     }
 
     .tap-hint {
-      font-size: 0.74rem;
-      text-align: center;
+      font-size: 0.72rem;
+      text-align: left;
     }
 
-    /* Mobile Day Editor: 2-Column Touch Form (16px inputs prevent iOS zoom) */
-    .day-editor {
-      padding: 0.9rem 0.85rem;
-      margin-bottom: 1rem;
+    /* Mobile Bottom-Sheet Drawer for Day Editor */
+    .editor-backdrop:not([hidden]) {
+      display: block;
+      position: fixed;
+      inset: 0;
+      background: rgba(44, 30, 27, 0.42);
+      z-index: 90;
+    }
+
+    .day-editor:not([hidden]) {
+      position: fixed;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      z-index: 100;
+      margin-bottom: 0;
+      border-radius: 18px 18px 0 0;
+      border-bottom: none;
+      padding: 1.1rem 1rem 1.35rem;
+      max-height: 86vh;
+      overflow-y: auto;
+      box-shadow: 0 -10px 30px rgba(44, 30, 27, 0.24);
     }
 
     h3 {
@@ -1439,7 +1628,7 @@ const weekdayHeaders = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
       font-size: 0.92rem;
     }
 
-    /* 5-Column Mon–Fri Workweek Calendar on Mobile (Weekends Hidden) */
+    /* 5-Column Mon–Fri Workweek Calendar on Mobile (Weekends & Pre-Start Hidden) */
     .months-container.all-months-grid {
       grid-template-columns: 1fr;
     }
@@ -1457,7 +1646,8 @@ const weekdayHeaders = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
     }
 
     .weekend-col,
-    .empty-workweek-lead {
+    .empty-workweek-lead,
+    .before-start-day {
       display: none !important;
     }
 
@@ -1617,8 +1807,28 @@ const weekdayHeaders = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
     activateMonthTab(savedMonth);
   }
 
+  // Calendar Layout Mode (Grid vs. List)
+  const calModeBtns = document.querySelectorAll<HTMLButtonElement>('[data-cal-mode]');
+  function setCalMode(mode: string) {
+    calModeBtns.forEach((b) => b.classList.toggle('active', b.dataset.calMode === mode));
+    monthsGrid?.classList.toggle('mode-list', mode === 'list');
+    sessionStorage.setItem('ojt_cal_mode', mode);
+  }
+  calModeBtns.forEach((btn) => {
+    btn.addEventListener('click', () => {
+      setCalMode(btn.dataset.calMode || 'grid');
+    });
+  });
+  const savedCalMode = sessionStorage.getItem('ojt_cal_mode');
+  if (savedCalMode) {
+    setCalMode(savedCalMode);
+  } else if (window.innerWidth <= 680) {
+    setCalMode('list');
+  }
+
   // Day Editor Elements
   const editor = document.getElementById('day-editor');
+  const editorBackdrop = document.getElementById('editor-backdrop');
   const editorTitle = document.getElementById('editor-title');
   const editorSub = document.getElementById('editor-sub');
   const btnCloseEditor = document.getElementById('btn-close-editor');
@@ -1775,14 +1985,21 @@ const weekdayHeaders = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
       }
 
       editor.hidden = false;
-      editor.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      if (editorBackdrop) editorBackdrop.hidden = false;
+      if (window.innerWidth > 680) {
+        editor.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }
     });
   });
 
-  btnCloseEditor?.addEventListener('click', () => {
+  function closeEditor() {
     if (editor) editor.hidden = true;
+    if (editorBackdrop) editorBackdrop.hidden = true;
     allDayCards.forEach((c) => c.classList.remove('selected-day'));
-  });
+  }
+
+  btnCloseEditor?.addEventListener('click', closeEditor);
+  editorBackdrop?.addEventListener('click', closeEditor);
 
   // One-click status preset pills inside the editor
   quickPills.forEach((btn) => {
