@@ -1,0 +1,120 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-27T13:30:00+08:00",
+  "title": "Design System: Margareth's OJT Desk Diary & Calendar Cradle",
+  "extensions": {
+    "colorMeta": {
+      "accent-rose": {
+        "role": "primary",
+        "displayName": "Strawberry Rose Stamp",
+        "canonical": "#c84359",
+        "tonalRamp": ["#3b0f17", "#5c1824", "#7e2233", "#a32f44", "#c84359", "#de7385", "#f0aeb9", "#fce8ec"]
+      },
+      "status-full": {
+        "role": "secondary",
+        "displayName": "Matcha Full-Shift Ink",
+        "canonical": "#246a49",
+        "tonalRamp": ["#0c281b", "#143e2a", "#1c5439", "#246a49", "#3b8c66", "#68b38f", "#a3d9bf", "#e3f4eb"]
+      },
+      "bg-paper": {
+        "role": "neutral",
+        "displayName": "Cream Planner Sheet",
+        "canonical": "#faf5ee",
+        "tonalRamp": ["#2c1e1b", "#5e4742", "#7a605a", "#cbb5a2", "#dfcfc0", "#efe4d6", "#faf5ee", "#fffcf8"]
+      }
+    },
+    "typographyMeta": {
+      "display": { "displayName": "Display Metric", "purpose": "Hero rendered hours count in the top progress ribbon." },
+      "headline": { "displayName": "Diary Title (H1)", "purpose": "Top stationery header title." },
+      "title": { "displayName": "Page Heading (H2)", "purpose": "Left ledger and right calendar cradle titles." },
+      "body": { "displayName": "Ledger Body", "purpose": "Explanatory notes and schedule rules." },
+      "label": { "displayName": "Tabular Label & Cell", "purpose": "Calendar slot numbers, stamps, and table cells." }
+    },
+    "shadows": [
+      {
+        "name": "shadow-planner",
+        "value": "0 14px 34px -10px rgba(68, 41, 34, 0.12), 0 2px 6px rgba(68, 41, 34, 0.06)",
+        "purpose": "Grounds the open planner pages against the dotted desk mat."
+      },
+      {
+        "name": "shadow-slot",
+        "value": "0 2px 5px rgba(68, 41, 34, 0.06)",
+        "purpose": "Subtle elevation when hovering an interactive calendar day slot."
+      }
+    ],
+    "motion": [
+      {
+        "name": "ease-spring-out",
+        "value": "cubic-bezier(0.22, 1, 0.36, 1)",
+        "purpose": "Snappy 150ms–180ms tactile feedback on day slots, toggles, and stamp buttons."
+      }
+    ],
+    "breakpoints": [
+      { "name": "mobile", "value": "720px" },
+      { "name": "spread-collapse", "value": "1120px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Save Stamp Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Commits an attendance stamp or shift edit to Cloudflare D1 / SQLite.",
+      "html": "<button class=\"ds-btn-primary\">Save Stamp to SQLite</button>",
+      "css": ".ds-btn-primary { padding: 0.48rem 1rem; border-radius: 999px; border: 1px solid #c84359; background: #c84359; color: #fffdf9; font-family: 'Avenir Next', sans-serif; font-size: 0.84rem; font-weight: 700; cursor: pointer; transition: filter 150ms ease, transform 150ms ease; } .ds-btn-primary:hover { filter: brightness(1.06); transform: translateY(-1px); } .ds-btn-primary:focus-visible { outline: 2px solid #c84359; outline-offset: 2px; }"
+    },
+    {
+      "name": "Sticker Stamp Mode Pill",
+      "kind": "chip",
+      "refersTo": "button-stationery",
+      "description": "Selects the active attendance stamp tool in the Calendar Cradle toolbar.",
+      "html": "<button class=\"ds-stamp-btn active\">Full (8.8h)</button>",
+      "css": ".ds-stamp-btn { display: inline-flex; align-items: center; gap: 0.35rem; padding: 0.32rem 0.65rem; border-radius: 999px; border: 1.5px solid #dfcfc0; background: #fffcf8; color: #2c1e1b; font-family: 'Avenir Next', sans-serif; font-size: 0.78rem; font-weight: 700; cursor: pointer; transition: transform 150ms cubic-bezier(0.22, 1, 0.36, 1), border-color 150ms ease; } .ds-stamp-btn:hover { transform: translateY(-1px); border-color: #5e4742; } .ds-stamp-btn.active { background: #fce8ec; border-color: #c84359; color: #c84359; }"
+    },
+    {
+      "name": "Calendar Cradle Day Slot",
+      "kind": "card",
+      "refersTo": "day-slot-full",
+      "description": "Tactile weekday slot showing date, workday index, credited hours stamp, and capacity bar.",
+      "html": "<button class=\"ds-day-slot\"><div class=\"ds-slot-top\"><span>26</span><small>#45</small></div><div class=\"ds-slot-badge\">8.8h</div><div class=\"ds-slot-bar\"><div style=\"width:100%\"></div></div></button>",
+      "css": ".ds-day-slot { position: relative; width: 64px; min-height: 62px; border-radius: 8px; border: 1px solid #8fd1b0; background: #eef8f2; padding: 6px 5px 9px; display: flex; flex-direction: column; justify-content: space-between; font-family: 'Avenir Next', sans-serif; color: #2c1e1b; cursor: pointer; transition: transform 150ms cubic-bezier(0.22, 1, 0.36, 1); } .ds-day-slot:hover { transform: translateY(-2px); border-color: #c84359; } .ds-slot-top { display: flex; justify-content: space-between; font-size: 0.74rem; font-weight: 800; } .ds-slot-top small { font-size: 0.56rem; color: #7a605a; } .ds-slot-badge { font-size: 0.66rem; font-weight: 800; color: #246a49; text-align: center; } .ds-slot-bar { position: absolute; bottom: 3px; left: 4px; right: 4px; height: 3.5px; background: rgba(44,30,27,0.08); border-radius: 99px; overflow: hidden; } .ds-slot-bar > div { height: 100%; background: #246a49; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Tactile Stationery Desk Planner & Calibrated Sticker Cradle",
+    "overview": "Rather than presenting On-the-Job Training (OJT) hours as a cold corporate spreadsheet or generic SaaS KPI grid, this system embodies a physical Japanese stationery desk diary open across a dotted craft mat. The left page serves as a ruled accounting proof sheet where every step of the 480-hour formula is derived transparently, while the right page houses a four-month recessed calendar cradle where each scheduled workday sits as a physical paper slot with a proportional capacity bar and bespoke SVG sticker stamp.",
+    "keyCharacteristics": [
+      "Open two-page desk planner spread bound by a center spiral ring column on desktop viewports.",
+      "Warm oat-and-strawberry stationery palette (#FAF5EE paper over #F3EAE0 dotted desk mat) with high-contrast espresso ink (#2C1E1B).",
+      "Proportional capacity bars inside every calendar day slot showing rendered hours out of the 8.8h daily maximum.",
+      "Custom-drawn inline SVG stamps in a unified 1.5px–2.2px stroke weight with zero unicode emojis."
+    ],
+    "rules": [
+      {
+        "name": "The Semantic Stamp Ink Rule",
+        "body": "Every attendance state owns one dedicated ink-and-wash pair across the ledger dot, the stamp palette button, the calendar slot background, and the bottom capacity bar. Never mix status hues across unrelated UI chrome.",
+        "section": "colors"
+      },
+      {
+        "name": "The Tabular Chronometer Rule",
+        "body": "Every element displaying hours, days, percentages, dates, or clock times must apply font-variant-numeric: tabular-nums so vertical columns and live updates never jitter.",
+        "section": "typography"
+      },
+      {
+        "name": "The Soft Paper Elevation Rule",
+        "body": "Shadows always carry a vertical offset and soft blur tinted with warm umber (rgba(68, 41, 34, ...)). Zero-blur hard offset block shadows are never used.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "Do use font-variant-numeric: tabular-nums on every hour, workday count, percentage, and clock-out time.",
+      "Do draw all icons and attendance stamps as inline SVGs with 1.5px–2.2px strokes anchored to the espresso and stamp ink palette.",
+      "Do keep day editing inline inside the planner page via the Day Inspector slip or one-click Sticker Stamp mode."
+    ],
+    "donts": [
+      "Don't place kickers, eyebrows, or numbered badges (01 / 02) above headings.",
+      "Don't use unicode emojis or stock icon fonts anywhere in the interface.",
+      "Don't use colored left or right accent borders thicker than 1px on cards or callouts."
+    ]
+  }
+}

@@ -1,0 +1,1310 @@
+---
+import Layout from '../layouts/Layout.astro';
+import { getOjtData } from '../lib/db';
+import { buildOjtComputation } from '../lib/ojt-engine';
+
+const { settings, logs } = await getOjtData(Astro.locals);
+const summary = buildOjtComputation(settings, logs);
+
+const weekdayHeaders = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+---
+
+<Layout title="Margareth's OJT Tracker">
+  <main class="app-shell">
+    <!-- Top Bar: Simple Title & Reset -->
+    <header class="top-bar">
+      <div class="brand">
+        <div class="brand-icon" aria-hidden="true">
+          <svg viewBox="0 0 36 36" width="32" height="32" fill="none">
+            <rect x="3" y="5" width="30" height="28" rx="8" fill="#FCE8EC" stroke="#2C1E1B" stroke-width="2" />
+            <path d="M3 13H33" stroke="#2C1E1B" stroke-width="2" />
+            <path d="M11 2.5V8M25 2.5V8" stroke="#2C1E1B" stroke-width="2.2" stroke-linecap="round" />
+            <path
+              d="M18 16.5L19.9 20.4L24.2 21L21.1 24L21.8 28.3L18 26.3L14.2 28.3L14.9 24L11.8 21L16.1 20.4L18 16.5Z"
+              fill="#C84359"
+              stroke="#2C1E1B"
+              stroke-width="1.5"
+              stroke-linejoin="round"
+            />
+          </svg>
+        </div>
+        <div>
+          <h1>Margareth’s OJT Tracker</h1>
+          <p class="brand-sub">7:00 AM – 4:48 PM (8.8 hrs/day) &middot; Started Aug 24, 2026</p>
+        </div>
+      </div>
+
+      <button type="button" id="btn-reset-seed" class="btn-ghost" title="Reset to original attendance data">
+        Reset Data
+      </button>
+    </header>
+
+    <!-- Hero Summary: Only the 3 Numbers You Care About -->
+    <section class="hero-card" aria-label="OJT Progress Summary">
+      <div class="hero-metrics">
+        <div class="metric-block">
+          <span class="metric-label">Rendered (as of Oct 26)</span>
+          <div class="metric-main tabular">
+            <strong class="metric-big text-rose">{summary.renderedHoursAsOf.toFixed(1)}</strong>
+            <span class="metric-of">/ 480 hrs</span>
+          </div>
+          <span class="metric-sub tabular">{summary.completionPercentageAsOf.toFixed(1)}% complete</span>
+        </div>
+
+        <div class="metric-divider" aria-hidden="true"></div>
+
+        <div class="metric-block">
+          <span class="metric-label">Remaining (from Oct 27)</span>
+          <div class="metric-main tabular">
+            <strong class="metric-big">{summary.remainingHoursFromOct27.toFixed(1)}</strong>
+            <span class="metric-of">hrs left</span>
+          </div>
+          <span class="metric-sub tabular">
+            {summary.remainingFullWorkdays} full days + {summary.finalDayHoursNeeded.toFixed(1)} hrs
+          </span>
+        </div>
+
+        <div class="metric-divider" aria-hidden="true"></div>
+
+        <div class="metric-block metric-finish">
+          <span class="metric-label">Expected Finish Date</span>
+          <div class="metric-main">
+            <strong class="metric-date">{summary.expectedCompletionFormatted.replace(', 2026', '')}</strong>
+          </div>
+          <span class="metric-sub tabular">
+            Clocks out at <strong>{summary.finalDayClockOut}</strong> (1 hr 24 mins)
+          </span>
+        </div>
+      </div>
+
+      <!-- Clean Progress Bar -->
+      <div class="progress-wrap">
+        <div
+          class="progress-bar"
+          role="progressbar"
+          aria-valuemin="0"
+          aria-valuemax="480"
+          aria-valuenow={summary.renderedHoursAsOf}
+        >
+          <div class="progress-fill" style={`width: ${Math.min(100, summary.completionPercentageAsOf)}%`}></div>
+        </div>
+      </div>
+
+      <!-- Simple 1-Line Holiday Switch -->
+      <div class="hero-footer">
+        <label class="switch-row" for="toggle-nov2">
+          <input type="checkbox" id="toggle-nov2" checked={summary.nov2IsHoliday} />
+          <span class="switch-ui"></span>
+          <span>
+            Count <strong>Nov 2 (All Souls’ Day)</strong> as a holiday
+            <span class="muted-inline">
+              ({summary.nov2IsHoliday ? 'Finishes Mon, Nov 16' : 'Finishes Fri, Nov 13'})
+            </span>
+          </span>
+        </label>
+      </div>
+    </section>
+
+    <!-- Main View Switcher: Calendar Cradle vs. Math Breakdown -->
+    <div class="view-switcher" role="tablist" aria-label="Tracker Views">
+      <button
+        type="button"
+        class="view-tab active"
+        data-view-target="calendar"
+        role="tab"
+        aria-selected="true"
+      >
+        Calendar Cradle
+      </button>
+      <button
+        type="button"
+        class="view-tab"
+        data-view-target="math"
+        role="tab"
+        aria-selected="false"
+      >
+        How It’s Computed (Step-by-Step Math)
+      </button>
+    </div>
+
+    <!-- VIEW 1: SPACIOUS CALENDAR CRADLE -->
+    <section id="view-calendar" class="surface-card">
+      <div class="calendar-toolbar">
+        <div class="month-nav" role="tablist" aria-label="Select Month">
+          {summary.months.map((m) => (
+            <button
+              type="button"
+              class:list={['month-pill', { active: m.month === 9 }]}
+              data-month-btn={m.month}
+              role="tab"
+              aria-selected={m.month === 9 ? 'true' : 'false'}
+            >
+              {m.name.replace(' 2026', '')}
+              <span class="month-pill-hrs tabular">{m.renderedOrProjectedHours.toFixed(0)}h</span>
+            </button>
+          ))}
+          <button
+            type="button"
+            class="month-pill"
+            data-month-btn="all"
+            role="tab"
+            aria-selected="false"
+          >
+            All 4 Months
+          </button>
+        </div>
+
+        <span class="tap-hint">Tap any weekday to edit its hours or status</span>
+      </div>
+
+      <!-- Inline Day Editor (Only opens when you click a day) -->
+      <aside id="day-editor" class="day-editor" hidden>
+        <div class="editor-top">
+          <div>
+            <h3 id="editor-title">Tuesday, October 27, 2026</h3>
+            <p id="editor-sub" class="editor-sub tabular">Scheduled Workday</p>
+          </div>
+          <button type="button" id="btn-close-editor" class="btn-close" aria-label="Close editor">
+            <svg viewBox="0 0 20 20" width="16" height="16" fill="none">
+              <path d="M5 5L15 15M15 5L5 15" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+            </svg>
+          </button>
+        </div>
+
+        <div class="quick-status-pills">
+          <button type="button" class="q-pill q-full" data-quick-status="full">
+            Full Day (8.8h)
+          </button>
+          <button type="button" class="q-pill q-half" data-quick-status="half_day">
+            Half Day 1:00 PM (5.0h)
+          </button>
+          <button type="button" class="q-pill q-early" data-quick-status="early_out">
+            Early Out 3:12 PM (7.2h)
+          </button>
+          <button type="button" class="q-pill q-absent" data-quick-status="absent">
+            Absent (0h)
+          </button>
+          <button type="button" class="q-pill q-holiday" data-quick-status="holiday">
+            Holiday (0h)
+          </button>
+        </div>
+
+        <details class="custom-time-details">
+          <summary>Custom clock-out time or move to another date</summary>
+          <form id="custom-form" class="custom-form">
+            <input type="hidden" id="input-date" value="" />
+            <label>
+              <span>Status</span>
+              <select id="input-status">
+                <option value="full">Full Day (8.8h)</option>
+                <option value="half_day">Half Day (5.0h)</option>
+                <option value="early_out">Early Out (7.2h)</option>
+                <option value="absent">Absent (0h)</option>
+                <option value="holiday">Holiday (0h)</option>
+                <option value="custom">Custom Hours</option>
+              </select>
+            </label>
+            <label>
+              <span>Time In</span>
+              <input type="time" id="input-time-in" value="07:00" />
+            </label>
+            <label>
+              <span>Time Out</span>
+              <input type="time" id="input-time-out" value="16:48" />
+            </label>
+            <label>
+              <span>Credited Hrs</span>
+              <input type="number" id="input-credited" step="0.1" min="0" max="16" value="8.8" class="tabular" />
+            </label>
+            <button type="submit" class="btn-save">Save</button>
+          </form>
+
+          <div id="move-row" class="move-row" hidden>
+            <span>Move this record to another date:</span>
+            <input type="date" id="input-move-to" min="2026-08-24" max="2026-11-30" />
+            <button type="button" id="btn-move" class="btn-ghost-sm">Move</button>
+          </div>
+        </details>
+      </aside>
+
+      <!-- Month Grids (Defaults to showing October so it's spacious and clean) -->
+      <div id="months-grid" class="months-container">
+        {summary.months.map((m) => (
+          <div
+            class="month-sheet"
+            data-month-sheet={m.month}
+            hidden={m.month !== 9}
+          >
+            <div class="month-sheet-header">
+              <h2>{m.name}</h2>
+              <span class="month-summary tabular">
+                {m.scheduledWorkdays} workdays &middot; {m.renderedOrProjectedHours.toFixed(1)} hrs
+              </span>
+            </div>
+
+            <div class="weekday-row" aria-hidden="true">
+              {weekdayHeaders.map((w) => (
+                <span>{w}</span>
+              ))}
+            </div>
+
+            <div class="days-grid">
+              {Array.from({ length: m.leadingEmptySlots }).map(() => (
+                <div class="day-card day-empty" aria-hidden="true"></div>
+              ))}
+
+              {m.days.map((day) => {
+                const isInteractive = !day.isWeekend && !day.isBeforeStart;
+                return (
+                  <button
+                    type="button"
+                    class:list={[
+                      'day-card',
+                      `state-${day.status}`,
+                      {
+                        'is-asof': day.isAsOfDate,
+                        'is-today': day.isCurrentDate,
+                        'is-finish': day.isCompletionDay,
+                        'is-after-finish': day.isAfterCompletion,
+                      },
+                    ]}
+                    disabled={!isInteractive}
+                    data-date={day.date}
+                    data-status={day.status}
+                    data-time-in={day.timeIn || '07:00'}
+                    data-time-out={day.timeOut || '16:48'}
+                    data-credited={day.creditedHours}
+                    data-cumulative={day.cumulativeHours}
+                    data-workday={day.workdayNumber || ''}
+                    data-label={day.label || ''}
+                  >
+                    <div class="day-card-top">
+                      <span class="day-number tabular">{day.dayOfMonth}</span>
+                      {day.isAsOfDate && <span class="day-flag flag-asof">Oct 26</span>}
+                      {day.isCurrentDate && <span class="day-flag flag-today">Today</span>}
+                      {day.isCompletionDay && <span class="day-flag flag-finish">Finish!</span>}
+                    </div>
+
+                    <div class="day-card-body">
+                      {day.isCompletionDay ? (
+                        <span class="status-pill pill-finish tabular">
+                          {day.creditedHours.toFixed(1)}h (8:24 AM)
+                        </span>
+                      ) : day.status === 'full' ? (
+                        <span class="status-pill pill-full tabular">8.8 hrs</span>
+                      ) : day.status === 'projected_full' ? (
+                        <span class="status-pill pill-projected tabular">+8.8 hrs</span>
+                      ) : day.status === 'half_day' ? (
+                        <span class="status-pill pill-half tabular">Half Day &middot; 5.0h</span>
+                      ) : day.status === 'early_out' ? (
+                        <span class="status-pill pill-early tabular">Early Out &middot; 7.2h</span>
+                      ) : day.status === 'absent' ? (
+                        <span class="status-pill pill-absent">Absent &middot; 0h</span>
+                      ) : day.status === 'holiday' ? (
+                        <span class="status-pill pill-holiday">Holiday</span>
+                      ) : day.status === 'custom' ? (
+                        <span class="status-pill pill-custom tabular">{day.creditedHours.toFixed(1)} hrs</span>
+                      ) : null}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <!-- Simple Legend -->
+      <div class="simple-legend">
+        <span><i class="swatch s-full"></i> Done (8.8h)</span>
+        <span><i class="swatch s-proj"></i> Upcoming (+8.8h)</span>
+        <span><i class="swatch s-half"></i> Half Day (5.0h)</span>
+        <span><i class="swatch s-early"></i> Early Out (7.2h)</span>
+        <span><i class="swatch s-absent"></i> Absent (0h)</span>
+        <span><i class="swatch s-holiday"></i> Holiday</span>
+      </div>
+    </section>
+
+    <!-- VIEW 2: STEP-BY-STEP MATH BREAKDOWN (Clean & Scannable) -->
+    <section id="view-math" class="surface-card math-view" hidden>
+      <h2>How Margareth’s Hours Are Computed</h2>
+      <p class="math-intro">
+        Daily schedule is <strong>7:00 AM to 4:48 PM</strong> (9 hrs 48 mins on-site, minus 1 hr lunch from 12:00–1:00 PM) = <strong>8.8 credited hours per day</strong>.
+      </p>
+
+      <div class="math-steps-list">
+        <!-- Step A -->
+        <div class="math-step-box">
+          <h3>Scheduled Workdays Through October 26</h3>
+          <ul class="clean-breakdown tabular">
+            <li>
+              <span>August 24 – 31 (excludes Aug 31 National Heroes Day)</span>
+              <strong>{summary.augustScheduledDays} days ({(summary.augustScheduledDays * 8.8).toFixed(1)} hrs)</strong>
+            </li>
+            <li>
+              <span>September 1 – 30</span>
+              <strong>{summary.septemberScheduledDays} days ({(summary.septemberScheduledDays * 8.8).toFixed(1)} hrs)</strong>
+            </li>
+            <li>
+              <span>October 1 – 26</span>
+              <strong>{summary.octoberScheduledDaysThroughAsOf} days ({(summary.octoberScheduledDaysThroughAsOf * 8.8).toFixed(1)} hrs)</strong>
+            </li>
+            <li class="total-line">
+              <span>Gross Scheduled ({summary.scheduledDaysThroughAsOf} days &times; 8.8 hrs)</span>
+              <strong>{summary.grossHoursThroughAsOf.toFixed(1)} hrs</strong>
+            </li>
+          </ul>
+        </div>
+
+        <!-- Step B -->
+        <div class="math-step-box">
+          <h3>Minus Absences &amp; Undertime</h3>
+          <ul class="clean-breakdown tabular">
+            <li>
+              <span>3 Full Absences (Sep 15, Oct 5, Oct 9 &mdash; 0h credited)</span>
+              <strong class="text-danger">&minus;{summary.absencesHoursShort.toFixed(1)} hrs</strong>
+            </li>
+            <li>
+              <span>1 Half Day (1:00 PM out &mdash; 5.0h credited)</span>
+              <strong class="text-warning">&minus;{summary.halfDaysHoursShort.toFixed(1)} hrs</strong>
+            </li>
+            <li>
+              <span>1 Early Out (3:12 PM out &mdash; 7.2h credited)</span>
+              <strong class="text-early">&minus;{summary.earlyOutsHoursShort.toFixed(1)} hrs</strong>
+            </li>
+            <li class="total-line">
+              <span>Total Deductions</span>
+              <strong class="text-danger">&minus;{summary.totalDeductionsThroughAsOf.toFixed(1)} hrs</strong>
+            </li>
+            <li class="grand-line">
+              <span>Hours Rendered as of October 26 ({summary.grossHoursThroughAsOf.toFixed(1)} &minus; {summary.totalDeductionsThroughAsOf.toFixed(1)})</span>
+              <strong class="text-rose">{summary.renderedHoursAsOf.toFixed(1)} hrs</strong>
+            </li>
+          </ul>
+        </div>
+
+        <!-- Step C -->
+        <div class="math-step-box">
+          <h3>Remaining Hours Starting October 27</h3>
+          <ul class="clean-breakdown tabular">
+            <li>
+              <span>Hours Needed to Reach 480.0 hrs (480.0 &minus; {summary.renderedHoursAsOf.toFixed(1)})</span>
+              <strong>{summary.remainingHoursFromOct27.toFixed(1)} hrs</strong>
+            </li>
+            <li>
+              <span>Workdays Needed ({summary.remainingHoursFromOct27.toFixed(1)} &divide; 8.8 hrs/day)</span>
+              <strong>{summary.remainingWorkdaysDecimal.toFixed(3)} days</strong>
+            </li>
+            <li class="grand-line">
+              <span>Expected Graduation ({summary.remainingFullWorkdays} full days + {summary.finalDayHoursNeeded.toFixed(1)}h on Day 14)</span>
+              <strong class="text-rose">{summary.expectedCompletionFormatted} at {summary.finalDayClockOut}</strong>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </section>
+  </main>
+</Layout>
+
+<style>
+  .app-shell {
+    max-width: 980px;
+    margin: 0 auto;
+    padding: 1.75rem 1.25rem 3.5rem;
+  }
+
+  /* Top Bar */
+  .top-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 1.25rem;
+  }
+
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
+  }
+
+  .brand-icon {
+    display: flex;
+    flex-shrink: 0;
+  }
+
+  h1 {
+    font-size: 1.35rem;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    color: var(--ink-primary);
+    line-height: 1.2;
+  }
+
+  .brand-sub {
+    font-size: 0.88rem;
+    color: var(--ink-secondary);
+  }
+
+  .btn-ghost {
+    padding: 0.45rem 0.9rem;
+    border-radius: var(--radius-pill);
+    border: 1px solid var(--ink-rule);
+    background: var(--bg-paper-elevated);
+    color: var(--ink-secondary);
+    font-family: inherit;
+    font-size: 0.78rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background-color 150ms ease, color 150ms ease;
+  }
+
+  .btn-ghost:hover {
+    background: var(--accent-rose-soft);
+    color: var(--accent-rose);
+    border-color: var(--accent-rose-border);
+  }
+
+  /* Hero Summary Card */
+  .hero-card {
+    background: var(--bg-paper);
+    border: 1.5px solid var(--ink-rule);
+    border-radius: var(--radius-page);
+    padding: 1.5rem 1.75rem;
+    box-shadow: var(--shadow-planner);
+    margin-bottom: 1.5rem;
+  }
+
+  .hero-metrics {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr auto 1.2fr;
+    align-items: center;
+    gap: 1.5rem;
+  }
+
+  .metric-block {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+  }
+
+  .metric-label {
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: var(--ink-secondary);
+  }
+
+  .metric-main {
+    display: flex;
+    align-items: baseline;
+    gap: 0.35rem;
+  }
+
+  .metric-big {
+    font-size: 2.25rem;
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    line-height: 1.05;
+    color: var(--ink-primary);
+  }
+
+  .text-rose {
+    color: var(--accent-rose);
+  }
+
+  .metric-of {
+    font-size: 0.88rem;
+    font-weight: 700;
+    color: var(--ink-secondary);
+  }
+
+  .metric-date {
+    font-size: 1.35rem;
+    font-weight: 800;
+    color: var(--accent-rose);
+    line-height: 1.2;
+  }
+
+  .metric-sub {
+    font-size: 0.78rem;
+    color: var(--ink-secondary);
+    font-weight: 600;
+  }
+
+  .metric-divider {
+    width: 1px;
+    height: 52px;
+    background: var(--ink-rule);
+  }
+
+  .progress-wrap {
+    margin-top: 1.25rem;
+  }
+
+  .progress-bar {
+    height: 12px;
+    background: var(--bg-paper-recessed);
+    border-radius: var(--radius-pill);
+    overflow: hidden;
+  }
+
+  .progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #246a49 0%, #c84359 100%);
+    border-radius: var(--radius-pill);
+  }
+
+  .hero-footer {
+    margin-top: 1rem;
+    padding-top: 0.9rem;
+    border-top: 1px dashed var(--ink-rule);
+  }
+
+  .switch-row {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.6rem;
+    font-size: 0.85rem;
+    color: var(--ink-primary);
+    cursor: pointer;
+    user-select: none;
+  }
+
+  .switch-row input {
+    position: absolute;
+    opacity: 0;
+    width: 0;
+    height: 0;
+  }
+
+  .switch-ui {
+    position: relative;
+    width: 36px;
+    height: 20px;
+    background: var(--ink-stitch);
+    border-radius: var(--radius-pill);
+    flex-shrink: 0;
+    transition: background-color 150ms ease;
+  }
+
+  .switch-ui::after {
+    content: '';
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 16px;
+    height: 16px;
+    background: #fff;
+    border-radius: 50%;
+    transition: transform 150ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  .switch-row input:checked + .switch-ui {
+    background: var(--accent-rose);
+  }
+
+  .switch-row input:checked + .switch-ui::after {
+    transform: translateX(16px);
+  }
+
+  .muted-inline {
+    color: var(--ink-secondary);
+    margin-left: 0.25rem;
+  }
+
+  /* View Switcher Tabs */
+  .view-switcher {
+    display: inline-flex;
+    background: var(--bg-paper-recessed);
+    padding: 0.3rem;
+    border-radius: 12px;
+    border: 1px solid var(--ink-rule);
+    margin-bottom: 1rem;
+    gap: 0.25rem;
+  }
+
+  .view-tab {
+    padding: 0.5rem 1.1rem;
+    border-radius: 9px;
+    border: none;
+    background: transparent;
+    color: var(--ink-secondary);
+    font-family: inherit;
+    font-size: 0.88rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background-color 150ms ease, color 150ms ease;
+  }
+
+  .view-tab.active {
+    background: var(--bg-paper-elevated);
+    color: var(--ink-primary);
+    box-shadow: var(--shadow-slot);
+  }
+
+  /* Surface Card */
+  .surface-card {
+    background: var(--bg-paper);
+    border: 1.5px solid var(--ink-rule);
+    border-radius: var(--radius-page);
+    padding: 1.5rem 1.75rem;
+    box-shadow: var(--shadow-planner);
+  }
+
+  /* Calendar Toolbar */
+  .calendar-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+    margin-bottom: 1.25rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px dashed var(--ink-rule);
+  }
+
+  .month-nav {
+    display: flex;
+    gap: 0.45rem;
+    flex-wrap: wrap;
+  }
+
+  .month-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.45rem 0.9rem;
+    border-radius: var(--radius-pill);
+    border: 1px solid var(--ink-rule);
+    background: var(--bg-paper-elevated);
+    color: var(--ink-secondary);
+    font-family: inherit;
+    font-size: 0.86rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 150ms ease;
+  }
+
+  .month-pill:hover {
+    border-color: var(--ink-secondary);
+    color: var(--ink-primary);
+  }
+
+  .month-pill.active {
+    background: var(--ink-primary);
+    color: var(--bg-paper-elevated);
+    border-color: var(--ink-primary);
+  }
+
+  .month-pill-hrs {
+    font-size: 0.74rem;
+    opacity: 0.8;
+  }
+
+  .tap-hint {
+    font-size: 0.82rem;
+    color: var(--ink-secondary);
+    font-weight: 600;
+  }
+
+  /* Inline Day Editor */
+  .day-editor {
+    background: var(--bg-paper-elevated);
+    border: 1.5px solid var(--accent-rose-border);
+    border-radius: 14px;
+    padding: 1.1rem 1.25rem;
+    margin-bottom: 1.25rem;
+  }
+
+  .editor-top {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    margin-bottom: 0.85rem;
+  }
+
+  h3 {
+    font-size: 1.05rem;
+    font-weight: 800;
+    color: var(--ink-primary);
+  }
+
+  .editor-sub {
+    font-size: 0.82rem;
+    color: var(--ink-secondary);
+  }
+
+  .btn-close {
+    background: var(--bg-paper-recessed);
+    border: none;
+    border-radius: 8px;
+    width: 28px;
+    height: 28px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--ink-secondary);
+    cursor: pointer;
+  }
+
+  .quick-status-pills {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+  }
+
+  .q-pill {
+    padding: 0.45rem 0.9rem;
+    border-radius: var(--radius-pill);
+    border: 1.5px solid var(--ink-rule);
+    background: var(--bg-paper);
+    color: var(--ink-primary);
+    font-family: inherit;
+    font-size: 0.82rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: transform 150ms ease, border-color 150ms ease;
+  }
+
+  .q-pill:hover {
+    transform: translateY(-1px);
+  }
+
+  .q-full:hover { border-color: var(--status-full); background: var(--status-full-soft); color: var(--status-full); }
+  .q-half:hover { border-color: var(--status-half); background: var(--status-half-soft); color: var(--status-half); }
+  .q-early:hover { border-color: var(--status-early); background: var(--status-early-soft); color: var(--status-early); }
+  .q-absent:hover { border-color: var(--status-absent); background: var(--status-absent-soft); color: var(--status-absent); }
+  .q-holiday:hover { border-color: var(--status-holiday); background: var(--status-holiday-soft); color: var(--status-holiday); }
+
+  .custom-time-details {
+    margin-top: 0.85rem;
+    padding-top: 0.75rem;
+    border-top: 1px dashed var(--ink-rule);
+    font-size: 0.8rem;
+    color: var(--ink-secondary);
+  }
+
+  .custom-time-details summary {
+    cursor: pointer;
+    font-weight: 700;
+  }
+
+  .custom-form {
+    display: flex;
+    align-items: flex-end;
+    gap: 0.65rem;
+    flex-wrap: wrap;
+    margin-top: 0.75rem;
+  }
+
+  .custom-form label {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    font-size: 0.75rem;
+    font-weight: 700;
+  }
+
+  .custom-form input,
+  .custom-form select {
+    padding: 0.4rem 0.6rem;
+    border-radius: 8px;
+    border: 1px solid var(--ink-stitch);
+    background: var(--bg-paper);
+    color: var(--ink-primary);
+    font-family: inherit;
+    font-size: 0.82rem;
+  }
+
+  .btn-save {
+    padding: 0.42rem 1rem;
+    border-radius: var(--radius-pill);
+    border: none;
+    background: var(--accent-rose);
+    color: #fff;
+    font-family: inherit;
+    font-size: 0.82rem;
+    font-weight: 700;
+    cursor: pointer;
+  }
+
+  .move-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    margin-top: 0.75rem;
+  }
+
+  .move-row input {
+    padding: 0.32rem 0.55rem;
+    border-radius: 7px;
+    border: 1px solid var(--ink-stitch);
+    background: var(--bg-paper);
+    font-family: inherit;
+    font-size: 0.8rem;
+  }
+
+  .btn-ghost-sm {
+    padding: 0.35rem 0.75rem;
+    border-radius: 7px;
+    border: 1px solid var(--ink-stitch);
+    background: var(--bg-paper-recessed);
+    font-family: inherit;
+    font-size: 0.78rem;
+    font-weight: 700;
+    cursor: pointer;
+  }
+
+  /* Month Sheet & Spacious Day Grid */
+  .months-container.all-months-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1.5rem;
+  }
+
+  .month-sheet-header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    margin-bottom: 0.85rem;
+  }
+
+  h2 {
+    font-size: 1.25rem;
+    font-weight: 800;
+    color: var(--ink-primary);
+  }
+
+  .month-summary {
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: var(--ink-secondary);
+  }
+
+  .weekday-row {
+    display: grid;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    gap: 8px;
+    margin-bottom: 8px;
+    text-align: center;
+    font-size: 0.76rem;
+    font-weight: 800;
+    color: var(--ink-muted);
+  }
+
+  .days-grid {
+    display: grid;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .day-card {
+    min-height: 76px;
+    border-radius: 12px;
+    border: 1.5px solid var(--ink-rule);
+    background: var(--bg-paper-elevated);
+    padding: 0.55rem 0.6rem;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    text-align: left;
+    font-family: inherit;
+    color: var(--ink-primary);
+    cursor: pointer;
+    transition: transform 150ms cubic-bezier(0.22, 1, 0.36, 1), border-color 150ms ease, box-shadow 150ms ease;
+  }
+
+  .day-card:not(:disabled):hover {
+    transform: translateY(-2px);
+    border-color: var(--accent-rose);
+    box-shadow: var(--shadow-slot);
+  }
+
+  .day-card:disabled {
+    cursor: default;
+  }
+
+  .day-empty {
+    background: transparent;
+    border-color: transparent;
+  }
+
+  .state-weekend,
+  .state-unscheduled {
+    background: var(--bg-slot-weekend);
+    border-color: transparent;
+    opacity: 0.45;
+  }
+
+  .state-full {
+    background: #eef8f2;
+    border-color: var(--status-full-border);
+  }
+
+  .state-projected_full {
+    background: var(--bg-slot-future);
+    border-style: dashed;
+    border-color: var(--status-full-border);
+  }
+
+  .state-half_day {
+    background: var(--status-half-soft);
+    border-color: var(--status-half-border);
+  }
+
+  .state-early_out {
+    background: var(--status-early-soft);
+    border-color: var(--status-early-border);
+  }
+
+  .state-absent {
+    background: var(--status-absent-soft);
+    border-color: var(--status-absent-border);
+  }
+
+  .state-holiday {
+    background: var(--status-holiday-soft);
+    border-color: var(--status-holiday-border);
+  }
+
+  .is-finish {
+    background: var(--accent-rose-soft) !important;
+    border: 2px solid var(--accent-rose) !important;
+  }
+
+  .is-today {
+    outline: 2px solid var(--accent-rose);
+    outline-offset: -2px;
+  }
+
+  .is-after-finish {
+    opacity: 0.38;
+  }
+
+  .day-card-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 4px;
+  }
+
+  .day-number {
+    font-size: 0.88rem;
+    font-weight: 800;
+  }
+
+  .day-flag {
+    font-size: 0.62rem;
+    font-weight: 800;
+    padding: 1px 5px;
+    border-radius: var(--radius-pill);
+    color: #fff;
+  }
+
+  .flag-asof { background: var(--status-full); }
+  .flag-today { background: var(--ink-primary); }
+  .flag-finish { background: var(--accent-rose); }
+
+  .status-pill {
+    display: inline-block;
+    font-size: 0.74rem;
+    font-weight: 700;
+    line-height: 1.2;
+  }
+
+  .pill-full { color: var(--status-full); }
+  .pill-projected { color: var(--status-full); opacity: 0.8; }
+  .pill-half { color: var(--status-half); }
+  .pill-early { color: var(--status-early); }
+  .pill-absent { color: var(--status-absent); }
+  .pill-holiday { color: var(--status-holiday); }
+  .pill-finish { color: var(--accent-rose); font-weight: 800; }
+
+  /* Simple Legend */
+  .simple-legend {
+    display: flex;
+    align-items: center;
+    gap: 1.1rem;
+    flex-wrap: wrap;
+    margin-top: 1.25rem;
+    padding-top: 1rem;
+    border-top: 1px dashed var(--ink-rule);
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--ink-secondary);
+  }
+
+  .simple-legend span {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+  }
+
+  .swatch {
+    width: 12px;
+    height: 12px;
+    border-radius: 4px;
+    display: inline-block;
+  }
+
+  .s-full { background: #eef8f2; border: 1px solid var(--status-full-border); }
+  .s-proj { background: #fff; border: 1.5px dashed var(--status-full-border); }
+  .s-half { background: var(--status-half-soft); border: 1px solid var(--status-half-border); }
+  .s-early { background: var(--status-early-soft); border: 1px solid var(--status-early-border); }
+  .s-absent { background: var(--status-absent-soft); border: 1px solid var(--status-absent-border); }
+  .s-holiday { background: var(--status-holiday-soft); border: 1px solid var(--status-holiday-border); }
+
+  /* Math Breakdown View */
+  .math-intro {
+    font-size: 0.92rem;
+    color: var(--ink-secondary);
+    margin-top: 0.35rem;
+    margin-bottom: 1.25rem;
+    max-width: 68ch;
+  }
+
+  .math-steps-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .math-step-box {
+    background: var(--bg-paper-elevated);
+    border: 1px solid var(--ink-rule);
+    border-radius: 14px;
+    padding: 1.15rem 1.35rem;
+  }
+
+  .clean-breakdown {
+    list-style: none;
+    margin-top: 0.65rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    font-size: 0.9rem;
+  }
+
+  .clean-breakdown li {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    color: var(--ink-secondary);
+  }
+
+  .clean-breakdown li strong {
+    color: var(--ink-primary);
+  }
+
+  .clean-breakdown .total-line {
+    padding-top: 0.5rem;
+    border-top: 1px dashed var(--ink-rule);
+    color: var(--ink-primary);
+    font-weight: 700;
+  }
+
+  .clean-breakdown .grand-line {
+    padding-top: 0.55rem;
+    border-top: 1.5px solid var(--ink-rule);
+    color: var(--ink-primary);
+    font-weight: 800;
+    font-size: 0.96rem;
+  }
+
+  .text-danger { color: var(--status-absent) !important; }
+  .text-warning { color: var(--status-half) !important; }
+  .text-early { color: var(--status-early) !important; }
+
+  @media (max-width: 760px) {
+    .hero-metrics {
+      grid-template-columns: 1fr;
+      gap: 1rem;
+    }
+
+    .metric-divider {
+      display: none;
+    }
+
+    .months-container.all-months-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .day-card {
+      min-height: 62px;
+      padding: 0.35rem;
+    }
+
+    .status-pill {
+      font-size: 0.65rem;
+    }
+  }
+</style>
+
+<script>
+  // View Switcher (Calendar Cradle vs. Step-by-Step Math)
+  const viewTabs = document.querySelectorAll<HTMLButtonElement>('.view-tab');
+  const viewCalendar = document.getElementById('view-calendar');
+  const viewMath = document.getElementById('view-math');
+
+  viewTabs.forEach((tab) => {
+    tab.addEventListener('click', () => {
+      viewTabs.forEach((t) => {
+        t.classList.remove('active');
+        t.setAttribute('aria-selected', 'false');
+      });
+      tab.classList.add('active');
+      tab.setAttribute('aria-selected', 'true');
+
+      const target = tab.dataset.viewTarget;
+      if (viewCalendar && viewMath) {
+        viewCalendar.hidden = target !== 'calendar';
+        viewMath.hidden = target !== 'math';
+      }
+    });
+  });
+
+  // Month Selector Pills
+  const monthBtns = document.querySelectorAll<HTMLButtonElement>('.month-pill');
+  const monthSheets = document.querySelectorAll<HTMLElement>('.month-sheet');
+  const monthsGrid = document.getElementById('months-grid');
+
+  monthBtns.forEach((btn) => {
+    btn.addEventListener('click', () => {
+      monthBtns.forEach((b) => {
+        b.classList.remove('active');
+        b.setAttribute('aria-selected', 'false');
+      });
+      btn.classList.add('active');
+      btn.setAttribute('aria-selected', 'true');
+
+      const selected = btn.dataset.monthBtn;
+      if (selected === 'all') {
+        monthsGrid?.classList.add('all-months-grid');
+        monthSheets.forEach((s) => (s.hidden = false));
+      } else {
+        monthsGrid?.classList.remove('all-months-grid');
+        monthSheets.forEach((s) => {
+          s.hidden = s.dataset.monthSheet !== selected;
+        });
+      }
+    });
+  });
+
+  // Day Editor Interactions
+  const editor = document.getElementById('day-editor');
+  const editorTitle = document.getElementById('editor-title');
+  const editorSub = document.getElementById('editor-sub');
+  const btnCloseEditor = document.getElementById('btn-close-editor');
+  const inputDate = document.getElementById('input-date') as HTMLInputElement | null;
+  const inputStatus = document.getElementById('input-status') as HTMLSelectElement | null;
+  const inputTimeIn = document.getElementById('input-time-in') as HTMLInputElement | null;
+  const inputTimeOut = document.getElementById('input-time-out') as HTMLInputElement | null;
+  const inputCredited = document.getElementById('input-credited') as HTMLInputElement | null;
+  const moveRow = document.getElementById('move-row');
+  const inputMoveTo = document.getElementById('input-move-to') as HTMLInputElement | null;
+  const btnMove = document.getElementById('btn-move');
+  const customForm = document.getElementById('custom-form');
+
+  let selectedDate = '';
+
+  async function postAttendance(payload: Record<string, unknown>) {
+    const res = await fetch('/api/attendance', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    if (res.ok) window.location.reload();
+  }
+
+  document.querySelectorAll<HTMLButtonElement>('.day-card:not(:disabled)').forEach((card) => {
+    card.addEventListener('click', () => {
+      selectedDate = card.dataset.date || '';
+      if (!selectedDate || !editor) return;
+
+      const [y, m, d] = selectedDate.split('-').map(Number);
+      const nice = new Date(Date.UTC(y, m - 1, d)).toLocaleDateString('en-US', {
+        weekday: 'long',
+        month: 'long',
+        day: 'numeric',
+        year: 'numeric',
+        timeZone: 'UTC',
+      });
+
+      if (editorTitle) editorTitle.textContent = nice;
+      if (editorSub) {
+        const wd = card.dataset.workday ? `Workday #${card.dataset.workday}` : 'Non-working / Holiday';
+        editorSub.textContent = `${wd} · ${card.dataset.credited || '0'} hrs credited · ${card.dataset.cumulative || '0'} hrs cumulative`;
+      }
+
+      const rawStatus = card.dataset.status || 'full';
+      const normStatus = rawStatus.startsWith('projected') ? 'full' : rawStatus;
+
+      if (inputDate) inputDate.value = selectedDate;
+      if (inputStatus) inputStatus.value = normStatus;
+      if (inputTimeIn) inputTimeIn.value = card.dataset.timeIn?.includes('M') ? '07:00' : (card.dataset.timeIn || '07:00');
+      if (inputTimeOut) inputTimeOut.value = card.dataset.timeOut?.includes('M') ? '16:48' : (card.dataset.timeOut || '16:48');
+      if (inputCredited) inputCredited.value = card.dataset.credited || '8.8';
+
+      if (moveRow && inputMoveTo) {
+        moveRow.hidden = normStatus === 'full';
+        inputMoveTo.value = selectedDate;
+      }
+
+      editor.hidden = false;
+      editor.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    });
+  });
+
+  btnCloseEditor?.addEventListener('click', () => {
+    if (editor) editor.hidden = true;
+  });
+
+  // One-click status pills inside the editor
+  document.querySelectorAll<HTMLButtonElement>('[data-quick-status]').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      if (!selectedDate) return;
+      await postAttendance({
+        date: selectedDate,
+        status: btn.dataset.quickStatus,
+      });
+    });
+  });
+
+  customForm?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (!selectedDate || !inputStatus || !inputTimeIn || !inputTimeOut || !inputCredited) return;
+    await postAttendance({
+      date: selectedDate,
+      status: inputStatus.value,
+      time_in: inputTimeIn.value,
+      time_out: inputTimeOut.value,
+      credited_hours: parseFloat(inputCredited.value),
+    });
+  });
+
+  btnMove?.addEventListener('click', async () => {
+    if (!selectedDate || !inputMoveTo || !inputMoveTo.value || inputMoveTo.value === selectedDate) return;
+    await postAttendance({
+      action: 'move',
+      fromDate: selectedDate,
+      toDate: inputMoveTo.value,
+    });
+  });
+
+  // Nov 2 Holiday Switch
+  const toggleNov2 = document.getElementById('toggle-nov2') as HTMLInputElement | null;
+  toggleNov2?.addEventListener('change', async () => {
+    await postAttendance({
+      date: '2026-11-02',
+      status: toggleNov2.checked ? 'holiday' : 'full',
+      label: toggleNov2.checked ? "All Souls' Day Break" : null,
+    });
+  });
+
+  // Reset Button
+  document.getElementById('btn-reset-seed')?.addEventListener('click', async () => {
+    const res = await fetch('/api/reset', { method: 'POST' });
+    if (res.ok) window.location.reload();
+  });
+</script>

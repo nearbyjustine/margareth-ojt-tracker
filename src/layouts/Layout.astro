@@ -1,0 +1,150 @@
+---
+interface Props {
+  title: string;
+}
+
+const { title } = Astro.props;
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="Margareth's OJT Hours Ledger, Mathematical Breakdown, and Interactive Calendar Cradle"
+    />
+    <title>{title}</title>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  </head>
+  <body>
+    <!--
+    THESIS: A tactile Japanese stationery desk planner and sticker cradle where every OJT workday is a physical paper slot with proportional hour bars and custom-drawn SVG attendance stamps, replacing sterile corporate KPI cards.
+    OWN-WORLD: Warm strawberry-milk and oat-cream ledger paper (#FAF5EE, #F3EAE0), deep espresso ink (#2C1E1B), matcha-leaf full-shift ink (#2A6F4E), strawberry-rose accent (#C84359), honey-apricot undertime ink (#B86B19), and stitched paper index tabs.
+    STORY: Justine and Margareth immediately see 364.2 hours rendered through Oct 26, 115.8 hours left starting Oct 27, the step-by-step math proof, and the Nov 16 8:24 AM graduation target, while stamping or moving any day in the cradle.
+    FIRST VIEWPORT: Open two-page planner workbench: top woven progress ribbon (364.2 / 480.0h, 75.875%), left ruled mathematical proof ledger, right 4-month interactive Calendar Cradle with sticker stamp bar.
+    FORM: Tactile Desk Planner & Calibrated Cradle (user-pinned cute variation of candidate 4; seed key 358d8f23).
+    FINISH: unreviewed and undocumented is unfinished; this build ends with the finish review, the verdict, DESIGN.md, and every shipping raster carrying its provenance
+    -->
+    <slot />
+  </body>
+</html>
+
+<style is:global>
+  :root {
+    --bg-desk: #f3eae0;
+    --bg-paper: #faf5ee;
+    --bg-paper-elevated: #fffcf8;
+    --bg-paper-recessed: #efe4d6;
+    --bg-slot-past: #f7efe4;
+    --bg-slot-future: #fffdf9;
+    --bg-slot-weekend: #f1e7da;
+
+    --ink-primary: #2c1e1b;
+    --ink-secondary: #5e4742;
+    --ink-muted: #7a605a;
+    --ink-rule: #dfcfc0;
+    --ink-stitch: #cbb5a2;
+
+    --accent-rose: #c84359;
+    --accent-rose-soft: #fce8ec;
+    --accent-rose-border: #eb9aa8;
+
+    --status-full: #246a49;
+    --status-full-soft: #e3f4eb;
+    --status-full-border: #8fd1b0;
+
+    --status-half: #b35912;
+    --status-half-soft: #fdf0e1;
+    --status-half-border: #edb882;
+
+    --status-early: #8d499c;
+    --status-early-soft: #f7eafb;
+    --status-early-border: #cfa3da;
+
+    --status-absent: #b83333;
+    --status-absent-soft: #fde8e8;
+    --status-absent-border: #ea9c9c;
+
+    --status-holiday: #25618e;
+    --status-holiday-soft: #e4f1fa;
+    --status-holiday-border: #8ec1e6;
+
+    --shadow-planner: 0 14px 34px -10px rgba(68, 41, 34, 0.12), 0 2px 6px rgba(68, 41, 34, 0.06);
+    --shadow-slot: 0 2px 5px rgba(68, 41, 34, 0.06);
+    --shadow-float: 0 16px 36px -8px rgba(68, 41, 34, 0.18);
+
+    --radius-page: 18px;
+    --radius-slot: 10px;
+    --radius-pill: 999px;
+
+    --font-ui: 'Avenir Next', 'Nunito', 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+    --font-Numeric: 'Avenir Next', 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+  }
+
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+  }
+
+  ::selection {
+    background-color: var(--accent-rose-soft);
+    color: var(--accent-rose);
+  }
+
+  html {
+    font-family: var(--font-ui);
+    background-color: var(--bg-desk);
+    color: var(--ink-primary);
+    caret-color: var(--accent-rose);
+    scroll-behavior: smooth;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  body {
+    min-height: 100vh;
+    background-color: var(--bg-desk);
+    background-image: radial-gradient(var(--ink-stitch) 1px, transparent 1px);
+    background-size: 22px 22px;
+    color: var(--ink-primary);
+    line-height: 1.5;
+  }
+
+  /* Custom themed scrollbars */
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: var(--bg-paper-recessed);
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: var(--ink-stitch);
+    border-radius: var(--radius-pill);
+    border: 2px solid var(--bg-paper-recessed);
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--ink-secondary);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--accent-rose);
+    outline-offset: 2px;
+  }
+
+  a {
+    color: var(--accent-rose);
+    text-underline-offset: 3px;
+  }
+
+  .tabular {
+    font-variant-numeric: tabular-nums;
+  }
+</style>

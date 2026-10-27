@@ -1,0 +1,246 @@
+{
+  "title": "Choose the visual world for Margareth's OJT Tracker",
+  "question": "The roll assigned Architectural Field Logbook & Calibrated Cradle. Keep it, take an alternate, or re-roll.",
+  "options": [
+    {
+      "id": "assigned",
+      "label": "Architectural Field Logbook & Calibrated Cradle",
+      "kicker": "THE ROLL",
+      "lineage": "Engineering field logs & calibrated studio wall schedules",
+      "thesis": "A drafting-table chronometer where every workday is a calibrated 8.8-hour capacity bar seated in a four-month architectural cradle alongside a live mathematical proof rail.",
+      "palette": [
+        "#F6F4EE",
+        "#14181D",
+        "#0F6E56",
+        "#D9532F",
+        "#D99B26"
+      ],
+      "materials": [
+        "drafting vellum grid",
+        "technical ink hairlines",
+        "calibrated capacity bars"
+      ],
+      "viewport": "Split precision workbench: left mathematical proof ledger (364.2h rendered / 115.8h remaining / Nov 16 8:24 AM finish), right 4-month tactile Calendar Cradle (Aug–Nov 2026) with proportional fill bars per day.",
+      "risk": "Can feel overly technical if day-slot interactions are not warm and immediate.",
+      "raised": [
+        {
+          "from": "challenger-ikeda",
+          "raise": "Strict tabular numeric alignment across every hour, deduction, and minute calculation."
+        },
+        {
+          "from": "challenger-orienteering",
+          "raise": "A continuous trajectory line links Aug 24 through Oct 26 (today's marker) to the exact Nov 16 8:24 AM completion cell."
+        },
+        {
+          "from": "challenger-saville",
+          "raise": "Each day slot in the cradle features a proportional fill strip encoding 8.8h, 7.2h, 5.0h, or 0.0h without visual clutter."
+        },
+        {
+          "from": "challenger-doujin",
+          "raise": "Rendered days through Oct 26 carry a distinct stamped state separating history from the 14 remaining workdays."
+        }
+      ],
+      "comp": ".impeccable/mocks/decision/assigned.webp",
+      "wireframe": {
+        "cols": 12,
+        "rows": 10,
+        "regions": [
+          { "label": "Chronometer Header & Nov 16 08:24 AM Target", "x": 0, "y": 0, "w": 12, "h": 2, "accent": true },
+          { "label": "Step-by-Step Math Proof & Deduction Ledger", "x": 0, "y": 2, "w": 4, "h": 8 },
+          { "label": "4-Month Tactile Calendar Cradle (Aug–Nov 2026)", "x": 4, "y": 2, "w": 8, "h": 8 }
+        ]
+      }
+    },
+    {
+      "id": "model-pick",
+      "label": "Bundy Punch-Card Rack & Split-Flap Chronometer",
+      "kicker": "IMPECCABLE’S PICK",
+      "lineage": "Factory time-clocks, manila punch cards, and mechanical split-flap displays",
+      "thesis": "Every workday sits as a physical timecard in a slotted wall cradle, stamped in navy for full 8.8h shifts and crimson ribbon ink for undertime and absences.",
+      "palette": [
+        "#EFE8D8",
+        "#1C2127",
+        "#1E3A5F",
+        "#C83E2B"
+      ],
+      "materials": [
+        "manila card stock",
+        "two-color ribbon ink",
+        "slotted metal rack"
+      ],
+      "viewport": "Mechanical split-flap countdown header above a physical 4-month card rack where clicking any slot pulls out the day's timecard to edit clock-in/out.",
+      "risk": "Familiar time-tracker metaphor that most skeuomorphic runs gravitate toward.",
+      "comp": ".impeccable/mocks/decision/model-pick.webp",
+      "wireframe": {
+        "cols": 12,
+        "rows": 10,
+        "regions": [
+          { "label": "Split-Flap Hours Counter (364.2h / 115.8h)", "x": 0, "y": 0, "w": 12, "h": 3, "accent": true },
+          { "label": "Slotted Timecard Cradle (Aug-Nov)", "x": 0, "y": 3, "w": 8, "h": 7 },
+          { "label": "Active Timecard Inspector & Math Slip", "x": 8, "y": 3, "w": 4, "h": 7 }
+        ]
+      }
+    },
+    {
+      "id": "challenger-boarding-pass",
+      "label": "Boarding Pass & Live Gate Sequence Board",
+      "verdict": "competitive",
+      "lineage": "Vernacular travel documents and mechanical departure boards",
+      "thesis": "Pairs a perforated OJT Clearance Pass at the top with a live sequence board that reflows the completion gate whenever a shift or holiday changes.",
+      "palette": [
+        "#F4F4F0",
+        "#111315",
+        "#E5A000",
+        "#1F7A4C"
+      ],
+      "materials": [
+        "perforated thermal stock",
+        "tabular departure grid",
+        "amber change-alert lamps"
+      ],
+      "viewport": "Segmented OJT Boarding Pass (Origin: Aug 24 -> Destination: Nov 16 08:24 AM) over a 60-workday sequence board with amber alerts on shortened days.",
+      "case": "Fuses cleanly: OJT completion is a journey toward a moving arrival gate, and attendance edits visibly shift the arrival row.",
+      "risk": "Day-by-day calendar scanning must stay calendar-shaped rather than purely a vertical flight list.",
+      "comp": ".impeccable/mocks/decision/challenger-boarding-pass.webp",
+      "hero": "https://impeccable.style/worlds/cards/vernacular-ephemera-boarding-pass-and-gate-board-hero.webp",
+      "board": "https://impeccable.style/worlds/cards/vernacular-ephemera-boarding-pass-and-gate-board.webp"
+    },
+    {
+      "id": "challenger-centre-rail",
+      "label": "Centre-Rail Reference Edition",
+      "verdict": "competitive",
+      "lineage": "Wide-margin reference editions with a vermilion centre key rail",
+      "thesis": "Twins the mathematical proof column and the calendar cradle around a live vermilion centre rail that brackets every absence, early out, and holiday back to the exact formula line.",
+      "palette": [
+        "#F2ECE1",
+        "#161514",
+        "#C8372D"
+      ],
+      "materials": [
+        "unbleached bone paper",
+        "iron-black ink",
+        "1px vermilion ruling engine"
+      ],
+      "viewport": "Two structured columns bridged by an SVG ruling engine that draws live vermilion brackets between the deduction math on the left and the exact calendar dates on the right.",
+      "case": "Holds product clarity strongly because the user explicitly asked for both the computing process and the calendar cradle side-by-side.",
+      "risk": "Three-value palette requires carefully differentiated fill patterns for half-day vs. early-out cells.",
+      "comp": ".impeccable/mocks/decision/challenger-centre-rail.webp",
+      "hero": "https://impeccable.style/worlds/cards/rw-centre-rail-reference-setting-hero.webp",
+      "board": "https://impeccable.style/worlds/cards/rw-centre-rail-reference-setting.webp"
+    },
+    {
+      "id": "challenger-ikeda",
+      "label": "Datamatics Barcode Field",
+      "verdict": "declined",
+      "lineage": "Ryoji Ikeda pure black-and-white data-sublime lattices",
+      "thesis": "Every OJT hour rendered as a high-contrast monochrome barcode column and sine wave.",
+      "palette": [
+        "#000000",
+        "#FFFFFF"
+      ],
+      "materials": [
+        "1px monochrome bars",
+        "tabular monospace numerics"
+      ],
+      "viewport": "60 vertical barcode slices representing workdays with dense numeric margins.",
+      "case": "Loses on both axes: pure black-and-white strobing barcodes obscure multi-state attendance editing.",
+      "kept": "Strict tabular numeric alignment across every hour, deduction, and minute calculation.",
+      "hero": "https://impeccable.style/worlds/cards/ikeda-datamatics-hero.webp"
+    },
+    {
+      "id": "challenger-orienteering",
+      "label": "ISO Orienteering Course Map",
+      "verdict": "declined",
+      "lineage": "ISOM topographic orienteering maps and control description tables",
+      "thesis": "The 480-hour requirement plotted as a purple orienteering course across four monthly terrain contours.",
+      "palette": [
+        "#FFFFFF",
+        "#C99A5B",
+        "#8B2FC9",
+        "#3A7CA5"
+      ],
+      "materials": [
+        "ISOM contour lines",
+        "purple course vector",
+        "control punch table"
+      ],
+      "viewport": "Contour map ground with numbered purple control circles for each milestone week.",
+      "case": "Terrain topography distracts from weekday calendar scanning.",
+      "kept": "A continuous trajectory line linking Aug 24 through Oct 26 to the Nov 16 finish cell.",
+      "hero": "https://impeccable.style/worlds/cards/notation-diagram-systems-orienteering-map-hero.webp"
+    },
+    {
+      "id": "challenger-saville",
+      "label": "Factory Catalog Color-Code Sleeve",
+      "verdict": "declined",
+      "lineage": "Peter Saville Factory Records catalog system and coded color blocks",
+      "thesis": "Matte black ground where every OJT week is a pulsar line and attendance states are encoded as minimalist color strips.",
+      "palette": [
+        "#0D0D0D",
+        "#F5F5F5",
+        "#2E86AB",
+        "#E63946"
+      ],
+      "materials": [
+        "matte black sleeve",
+        "white hairline plot",
+        "coded hue blocks"
+      ],
+      "viewport": "FAC-480 headline above a stacked pulsar plot of weekly hours and coded color strips.",
+      "case": "Hiding labels behind hover-decoded color blocks slows down daily time-tracking.",
+      "kept": "Proportional color-coded fill strips inside each day cell.",
+      "hero": "https://impeccable.style/worlds/cards/brand-identity-canon-saville-catalog-sleeve-hero.webp"
+    },
+    {
+      "id": "challenger-doujin",
+      "label": "Convention Hall Stamp Grid",
+      "verdict": "declined",
+      "lineage": "Newsprint convention catalogs with hand-circled biro routes",
+      "thesis": "A dense newsprint grid of 65 workday stamps where completed shifts are struck through by hand in red biro.",
+      "palette": [
+        "#E8E4DC",
+        "#1A1A1A",
+        "#D62828"
+      ],
+      "materials": [
+        "newsprint grain",
+        "biro pen circles",
+        "postage-stamp cells"
+      ],
+      "viewport": "Numbered stamp grid with hand-drawn checkmarks through Oct 26 and a circled finish target on Nov 16.",
+      "case": "Postage-stamp density is built for 800 booths rather than 65 rich daily logs.",
+      "kept": "Distinct hand-marked state separating completed days through Oct 26 from future days.",
+      "hero": "https://impeccable.style/worlds/cards/pop-culture-shelf-doujin-event-catalog-hero.webp"
+    }
+  ],
+  "reroll": {
+    "registers": [
+      "safer",
+      "bolder"
+    ]
+  },
+  "buildPath": {
+    "value": "code",
+    "toggle": true
+  },
+  "canon": true,
+  "canonCard": {
+    "label": "The category standard",
+    "thesis": "Clean modern SaaS productivity dashboard and calendar grid executed at high craft.",
+    "palette": [
+      "#F8FAFC",
+      "#0F172A",
+      "#2563EB",
+      "#10B981"
+    ],
+    "materials": [
+      "crisp border grid",
+      "semantic status pills",
+      "clean sans typography"
+    ],
+    "viewport": "Top KPI summary row above a two-column layout with attendance breakdown and interactive monthly calendar.",
+    "risk": "Familiar productivity dashboard aesthetic.",
+    "comp": ".impeccable/mocks/decision/canon.webp"
+  },
+  "steer": true
+}

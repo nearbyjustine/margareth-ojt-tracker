@@ -1,0 +1,9 @@
+name = "margareth-ojt-tracker"
+compatibility_date = "2025-04-01"
+compatibility_flags = ["nodejs_compat"]
+pages_build_output_dir = "./dist"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "margareth-ojt-db"
+database_id = "e2dfe5d7-c385-48cb-b1a9-af99deea7771"
