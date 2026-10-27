@@ -253,6 +253,18 @@ export function formatClockOutForPartialDay(
   return `${h12}:${String(m).padStart(2, '0')} ${period}`;
 }
 
+export function formatTime12h(time24: string | null): string {
+  if (!time24) return '';
+  if (time24.includes('AM') || time24.includes('PM')) return time24;
+  const [hStr, mStr] = time24.split(':');
+  const h = Number(hStr);
+  const m = Number(mStr || 0);
+  if (Number.isNaN(h)) return time24;
+  const period = h >= 12 ? 'PM' : 'AM';
+  const h12 = h % 12 === 0 ? 12 : h % 12;
+  return `${h12}:${String(m).padStart(2, '0')} ${period}`;
+}
+
 export function formatNiceDate(isoDate: string): string {
   const [y, m, d] = isoDate.split('-').map(Number);
   const dt = new Date(Date.UTC(y, m - 1, d));
@@ -305,6 +317,7 @@ export function buildOjtComputation(
   let earlyOutsCount = 0;
   let earlyOutsHoursShort = 0;
   let customShortHours = 0;
+  let postAsOfShortHours = 0;
 
   const months: MonthCradle[] = [];
 
@@ -459,9 +472,13 @@ export function buildOjtComputation(
           mUndertime++;
         }
       } else {
-        if (status === 'absent') mAbsences++;
+        if (status === 'absent') {
+          mAbsences++;
+          postAsOfShortHours = round1(postAsOfShortHours + short);
+        }
         if (status === 'half_day' || status === 'early_out' || (status === 'custom' && short > 0)) {
           mUndertime++;
+          postAsOfShortHours = round1(postAsOfShortHours + short);
         }
       }
 
@@ -546,7 +563,9 @@ export function buildOjtComputation(
   const renderedHoursAsOf = round1(grossHoursThroughAsOf - totalDeductionsThroughAsOf);
   const completionPercentageAsOf = Math.round((renderedHoursAsOf / target) * 100000) / 1000;
 
-  const remainingHoursFromOct27 = round1(Math.max(0, target - renderedHoursAsOf));
+  const remainingHoursFromOct27 = round1(
+    Math.max(0, target - renderedHoursAsOf + postAsOfShortHours)
+  );
   const remainingWorkdaysDecimal =
     Math.round((remainingHoursFromOct27 / daily) * 10000) / 10000;
   const remainingFullWorkdays = Math.floor(remainingHoursFromOct27 / daily);

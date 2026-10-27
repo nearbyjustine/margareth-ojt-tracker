@@ -29,12 +29,32 @@ export const POST: APIRoute = async ({ request, locals }) => {
     }
 
     const date = String(body.date || '');
-    const status = (body.status || 'full') as AttendanceStatus;
+    let status = (body.status || 'full') as AttendanceStatus;
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
       return new Response(JSON.stringify({ ok: false, error: 'Invalid date format' }), {
         status: 400,
         headers: { 'Content-Type': 'application/json' },
       });
+    }
+
+    const hasCustomTimes =
+      (body.time_in && body.time_in !== '07:00') ||
+      (body.time_out && body.time_out !== '16:48');
+    const hasCustomHours =
+      typeof body.credited_hours === 'number' &&
+      !Number.isNaN(body.credited_hours) &&
+      Math.abs(body.credited_hours - 8.8) > 0.01;
+
+    // If user edited time_in, time_out, or credited_hours while status dropdown was still 'full',
+    // automatically classify the status instead of discarding their edits!
+    if (status === 'full' && (hasCustomTimes || hasCustomHours)) {
+      if (body.time_out === '13:00' || body.time_out === '12:00' || body.credited_hours === 5.0) {
+        status = 'half_day';
+      } else if (body.credited_hours === 0) {
+        status = 'absent';
+      } else {
+        status = 'early_out';
+      }
     }
 
     let timeIn: string | null = body.time_in ?? '07:00';
@@ -52,16 +72,16 @@ export const POST: APIRoute = async ({ request, locals }) => {
       timeIn = body.time_in || '07:00';
       timeOut = body.time_out || '13:00';
       credited =
-        typeof body.credited_hours === 'number'
+        typeof body.credited_hours === 'number' && !Number.isNaN(body.credited_hours)
           ? body.credited_hours
           : computeHoursFromTimes(timeIn!, timeOut!);
       short = Math.max(0, Math.round((8.8 - credited) * 100) / 100);
-      defaultLabel = 'Half Day (1:00 PM Out)';
+      defaultLabel = `Half Day (${timeOut} Out)`;
     } else if (status === 'early_out') {
       timeIn = body.time_in || '07:00';
       timeOut = body.time_out || '15:12';
       credited =
-        typeof body.credited_hours === 'number'
+        typeof body.credited_hours === 'number' && !Number.isNaN(body.credited_hours)
           ? body.credited_hours
           : computeHoursFromTimes(timeIn!, timeOut!);
       short = Math.max(0, Math.round((8.8 - credited) * 100) / 100);
@@ -82,11 +102,11 @@ export const POST: APIRoute = async ({ request, locals }) => {
       timeIn = body.time_in || '07:00';
       timeOut = body.time_out || '16:48';
       credited =
-        typeof body.credited_hours === 'number'
+        typeof body.credited_hours === 'number' && !Number.isNaN(body.credited_hours)
           ? body.credited_hours
           : computeHoursFromTimes(timeIn!, timeOut!);
       short = Math.max(0, Math.round((8.8 - credited) * 100) / 100);
-      defaultLabel = 'Custom Shift';
+      defaultLabel = `Custom Shift (${credited.toFixed(1)}h)`;
     }
 
     const log: AttendanceLog = {

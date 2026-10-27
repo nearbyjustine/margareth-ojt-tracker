@@ -1,7 +1,7 @@
 ---
 import Layout from '../layouts/Layout.astro';
 import { getOjtData } from '../lib/db';
-import { buildOjtComputation } from '../lib/ojt-engine';
+import { buildOjtComputation, formatTime12h } from '../lib/ojt-engine';
 
 const { settings, logs } = await getOjtData(Astro.locals);
 const summary = buildOjtComputation(settings, logs);
@@ -72,7 +72,7 @@ const weekdayHeaders = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
             <strong class="metric-date">{summary.expectedCompletionFormatted.replace(', 2026', '')}</strong>
           </div>
           <span class="metric-sub tabular">
-            Clocks out at <strong>{summary.finalDayClockOut}</strong> (1 hr 24 mins)
+            Clocks out at <strong>{summary.finalDayClockOut}</strong> ({Math.floor(summary.finalDayHoursNeeded)}h {Math.round((summary.finalDayHoursNeeded % 1) * 60)}m shift)
           </span>
         </div>
       </div>
@@ -98,7 +98,7 @@ const weekdayHeaders = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
           <span>
             Count <strong>Nov 2 (All Souls’ Day)</strong> as a holiday
             <span class="muted-inline">
-              ({summary.nov2IsHoliday ? 'Finishes Mon, Nov 16' : 'Finishes Fri, Nov 13'})
+              (Currently finishes <strong>{summary.expectedCompletionFormatted.replace(', 2026', '')}</strong>)
             </span>
           </span>
         </label>
@@ -135,7 +135,7 @@ const weekdayHeaders = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
             <button
               type="button"
               class:list={['month-pill', { active: m.month === 9 }]}
-              data-month-btn={m.month}
+              data-month-btn={String(m.month)}
               role="tab"
               aria-selected={m.month === 9 ? 'true' : 'false'}
             >
@@ -154,10 +154,10 @@ const weekdayHeaders = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
           </button>
         </div>
 
-        <span class="tap-hint">Tap any weekday to edit its hours or status</span>
+        <span class="tap-hint">Tap any weekday to edit its time or status</span>
       </div>
 
-      <!-- Inline Day Editor (Only opens when you click a day) -->
+      <!-- Inline Day Editor (Opens when you click any weekday) -->
       <aside id="day-editor" class="day-editor" hidden>
         <div class="editor-top">
           <div>
@@ -171,7 +171,8 @@ const weekdayHeaders = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
           </button>
         </div>
 
-        <div class="quick-status-pills">
+        <!-- 1-Click Preset Buttons -->
+        <div class="quick-status-pills" role="group" aria-label="Quick status presets">
           <button type="button" class="q-pill q-full" data-quick-status="full">
             Full Day (8.8h)
           </button>
@@ -189,50 +190,53 @@ const weekdayHeaders = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
           </button>
         </div>
 
-        <details class="custom-time-details">
-          <summary>Custom clock-out time or move to another date</summary>
-          <form id="custom-form" class="custom-form">
-            <input type="hidden" id="input-date" value="" />
-            <label>
-              <span>Status</span>
-              <select id="input-status">
-                <option value="full">Full Day (8.8h)</option>
-                <option value="half_day">Half Day (5.0h)</option>
-                <option value="early_out">Early Out (7.2h)</option>
-                <option value="absent">Absent (0h)</option>
-                <option value="holiday">Holiday (0h)</option>
-                <option value="custom">Custom Hours</option>
-              </select>
-            </label>
-            <label>
-              <span>Time In</span>
-              <input type="time" id="input-time-in" value="07:00" />
-            </label>
-            <label>
-              <span>Time Out</span>
-              <input type="time" id="input-time-out" value="16:48" />
-            </label>
-            <label>
-              <span>Credited Hrs</span>
-              <input type="number" id="input-credited" step="0.1" min="0" max="16" value="8.8" class="tabular" />
-            </label>
-            <button type="submit" class="btn-save">Save</button>
-          </form>
+        <!-- Always-Visible Time & Hours Form (Auto-calculates live as you edit Time In / Out) -->
+        <form id="custom-form" class="custom-form">
+          <input type="hidden" id="input-date" value="" />
+          <input type="hidden" id="input-status" value="full" />
 
-          <div id="move-row" class="move-row" hidden>
-            <span>Move this record to another date:</span>
-            <input type="date" id="input-move-to" min="2026-08-24" max="2026-11-30" />
-            <button type="button" id="btn-move" class="btn-ghost-sm">Move</button>
+          <label class="time-field">
+            <span>Time In</span>
+            <input type="time" id="input-time-in" value="07:00" step="60" />
+          </label>
+
+          <label class="time-field">
+            <span>Time Out</span>
+            <input type="time" id="input-time-out" value="16:48" step="60" />
+          </label>
+
+          <label class="time-field">
+            <span>Credited Hrs (minus 12–1pm lunch)</span>
+            <input
+              type="number"
+              id="input-credited"
+              step="0.01"
+              min="0"
+              max="16"
+              value="8.8"
+              class="tabular"
+            />
+          </label>
+
+          <div class="form-actions">
+            <span id="live-calc-preview" class="live-calc-preview tabular">8.8h credited (0.0h short)</span>
+            <button type="submit" id="btn-save-time" class="btn-save">Save Time</button>
           </div>
-        </details>
+        </form>
+
+        <div id="move-row" class="move-row" hidden>
+          <span>Move this record to another date:</span>
+          <input type="date" id="input-move-to" min="2026-08-24" max="2026-11-30" />
+          <button type="button" id="btn-move" class="btn-ghost-sm">Move Date</button>
+        </div>
       </aside>
 
-      <!-- Month Grids (Defaults to showing October so it's spacious and clean) -->
+      <!-- Month Grids -->
       <div id="months-grid" class="months-container">
         {summary.months.map((m) => (
           <div
             class="month-sheet"
-            data-month-sheet={m.month}
+            data-month-sheet={String(m.month)}
             hidden={m.month !== 9}
           >
             <div class="month-sheet-header">
@@ -255,6 +259,7 @@ const weekdayHeaders = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
               {m.days.map((day) => {
                 const isInteractive = !day.isWeekend && !day.isBeforeStart;
+                const niceTimeOut = formatTime12h(day.timeOut);
                 return (
                   <button
                     type="button"
@@ -270,6 +275,7 @@ const weekdayHeaders = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
                     ]}
                     disabled={!isInteractive}
                     data-date={day.date}
+                    data-month={String(m.month)}
                     data-status={day.status}
                     data-time-in={day.timeIn || '07:00'}
                     data-time-out={day.timeOut || '16:48'}
@@ -288,22 +294,28 @@ const weekdayHeaders = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
                     <div class="day-card-body">
                       {day.isCompletionDay ? (
                         <span class="status-pill pill-finish tabular">
-                          {day.creditedHours.toFixed(1)}h (8:24 AM)
+                          {day.creditedHours.toFixed(1)}h ({summary.finalDayClockOut})
                         </span>
                       ) : day.status === 'full' ? (
                         <span class="status-pill pill-full tabular">8.8 hrs</span>
                       ) : day.status === 'projected_full' ? (
                         <span class="status-pill pill-projected tabular">+8.8 hrs</span>
                       ) : day.status === 'half_day' ? (
-                        <span class="status-pill pill-half tabular">Half Day &middot; 5.0h</span>
+                        <span class="status-pill pill-half tabular">
+                          {niceTimeOut ? `${niceTimeOut} · ` : ''}{day.creditedHours.toFixed(1)}h
+                        </span>
                       ) : day.status === 'early_out' ? (
-                        <span class="status-pill pill-early tabular">Early Out &middot; 7.2h</span>
+                        <span class="status-pill pill-early tabular">
+                          {niceTimeOut ? `${niceTimeOut} · ` : ''}{day.creditedHours.toFixed(1)}h
+                        </span>
                       ) : day.status === 'absent' ? (
                         <span class="status-pill pill-absent">Absent &middot; 0h</span>
                       ) : day.status === 'holiday' ? (
                         <span class="status-pill pill-holiday">Holiday</span>
                       ) : day.status === 'custom' ? (
-                        <span class="status-pill pill-custom tabular">{day.creditedHours.toFixed(1)} hrs</span>
+                        <span class="status-pill pill-early tabular">
+                          {niceTimeOut ? `${niceTimeOut} · ` : ''}{day.creditedHours.toFixed(1)}h
+                        </span>
                       ) : null}
                     </div>
                   </button>
@@ -319,7 +331,7 @@ const weekdayHeaders = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
         <span><i class="swatch s-full"></i> Done (8.8h)</span>
         <span><i class="swatch s-proj"></i> Upcoming (+8.8h)</span>
         <span><i class="swatch s-half"></i> Half Day (5.0h)</span>
-        <span><i class="swatch s-early"></i> Early Out (7.2h)</span>
+        <span><i class="swatch s-early"></i> Early Out / Custom</span>
         <span><i class="swatch s-absent"></i> Absent (0h)</span>
         <span><i class="swatch s-holiday"></i> Holiday</span>
       </div>
@@ -333,7 +345,6 @@ const weekdayHeaders = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
       </p>
 
       <div class="math-steps-list">
-        <!-- Step A -->
         <div class="math-step-box">
           <h3>Scheduled Workdays Through October 26</h3>
           <ul class="clean-breakdown tabular">
@@ -356,22 +367,27 @@ const weekdayHeaders = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
           </ul>
         </div>
 
-        <!-- Step B -->
         <div class="math-step-box">
-          <h3>Minus Absences &amp; Undertime</h3>
+          <h3>Minus Absences &amp; Undertime (Through Oct 26)</h3>
           <ul class="clean-breakdown tabular">
             <li>
-              <span>3 Full Absences (Sep 15, Oct 5, Oct 9 &mdash; 0h credited)</span>
+              <span>{summary.absencesCount} Full Absences (0h credited each)</span>
               <strong class="text-danger">&minus;{summary.absencesHoursShort.toFixed(1)} hrs</strong>
             </li>
             <li>
-              <span>1 Half Day (1:00 PM out &mdash; 5.0h credited)</span>
+              <span>{summary.halfDaysCount} Half Day Shifts</span>
               <strong class="text-warning">&minus;{summary.halfDaysHoursShort.toFixed(1)} hrs</strong>
             </li>
             <li>
-              <span>1 Early Out (3:12 PM out &mdash; 7.2h credited)</span>
+              <span>{summary.earlyOutsCount} Early Out Shifts</span>
               <strong class="text-early">&minus;{summary.earlyOutsHoursShort.toFixed(1)} hrs</strong>
             </li>
+            {summary.customShortHours > 0 && (
+              <li>
+                <span>Custom Shortened Shifts</span>
+                <strong class="text-early">&minus;{summary.customShortHours.toFixed(1)} hrs</strong>
+              </li>
+            )}
             <li class="total-line">
               <span>Total Deductions</span>
               <strong class="text-danger">&minus;{summary.totalDeductionsThroughAsOf.toFixed(1)} hrs</strong>
@@ -383,7 +399,6 @@ const weekdayHeaders = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
           </ul>
         </div>
 
-        <!-- Step C -->
         <div class="math-step-box">
           <h3>Remaining Hours Starting October 27</h3>
           <ul class="clean-breakdown tabular">
@@ -396,7 +411,7 @@ const weekdayHeaders = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
               <strong>{summary.remainingWorkdaysDecimal.toFixed(3)} days</strong>
             </li>
             <li class="grand-line">
-              <span>Expected Graduation ({summary.remainingFullWorkdays} full days + {summary.finalDayHoursNeeded.toFixed(1)}h on Day 14)</span>
+              <span>Expected Graduation ({summary.remainingFullWorkdays} full days + {summary.finalDayHoursNeeded.toFixed(1)}h on final day)</span>
               <strong class="text-rose">{summary.expectedCompletionFormatted} at {summary.finalDayClockOut}</strong>
             </li>
           </ul>
@@ -413,7 +428,6 @@ const weekdayHeaders = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
     padding: 1.75rem 1.25rem 3.5rem;
   }
 
-  /* Top Bar */
   .top-bar {
     display: flex;
     align-items: center;
@@ -564,7 +578,7 @@ const weekdayHeaders = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
     display: inline-flex;
     align-items: center;
     gap: 0.6rem;
-    font-size: 0.85rem;
+    font-size: 0.88rem;
     color: var(--ink-primary);
     cursor: pointer;
     user-select: none;
@@ -594,7 +608,7 @@ const weekdayHeaders = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
     left: 2px;
     width: 16px;
     height: 16px;
-    background: #fff;
+    background: var(--bg-paper-elevated);
     border-radius: 50%;
     transition: transform 150ms cubic-bezier(0.22, 1, 0.36, 1);
   }
@@ -625,7 +639,7 @@ const weekdayHeaders = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
   .view-tab {
     padding: 0.5rem 1.1rem;
-    border-radius: 9px;
+    border-radius: 8px;
     border: none;
     background: transparent;
     color: var(--ink-secondary);
@@ -679,7 +693,7 @@ const weekdayHeaders = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
     background: var(--bg-paper-elevated);
     color: var(--ink-secondary);
     font-family: inherit;
-    font-size: 0.86rem;
+    font-size: 0.88rem;
     font-weight: 700;
     cursor: pointer;
     transition: all 150ms ease;
@@ -697,23 +711,24 @@ const weekdayHeaders = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
   }
 
   .month-pill-hrs {
-    font-size: 0.74rem;
+    font-size: 0.78rem;
     opacity: 0.8;
   }
 
   .tap-hint {
-    font-size: 0.82rem;
+    font-size: 0.78rem;
     color: var(--ink-secondary);
-    font-weight: 600;
+    font-weight: 700;
   }
 
   /* Inline Day Editor */
   .day-editor {
     background: var(--bg-paper-elevated);
-    border: 1.5px solid var(--accent-rose-border);
+    border: 2px solid var(--accent-rose-border);
     border-radius: 14px;
-    padding: 1.1rem 1.25rem;
-    margin-bottom: 1.25rem;
+    padding: 1.15rem 1.35rem;
+    margin-bottom: 1.35rem;
+    box-shadow: var(--shadow-slot);
   }
 
   .editor-top {
@@ -724,13 +739,13 @@ const weekdayHeaders = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
   }
 
   h3 {
-    font-size: 1.05rem;
+    font-size: 1.25rem;
     font-weight: 800;
     color: var(--ink-primary);
   }
 
   .editor-sub {
-    font-size: 0.82rem;
+    font-size: 0.88rem;
     color: var(--ink-secondary);
   }
 
@@ -738,8 +753,8 @@ const weekdayHeaders = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
     background: var(--bg-paper-recessed);
     border: none;
     border-radius: 8px;
-    width: 28px;
-    height: 28px;
+    width: 30px;
+    height: 30px;
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -751,6 +766,8 @@ const weekdayHeaders = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
     display: flex;
     gap: 0.5rem;
     flex-wrap: wrap;
+    padding-bottom: 0.9rem;
+    border-bottom: 1px dashed var(--ink-rule);
   }
 
   .q-pill {
@@ -760,72 +777,88 @@ const weekdayHeaders = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
     background: var(--bg-paper);
     color: var(--ink-primary);
     font-family: inherit;
-    font-size: 0.82rem;
+    font-size: 0.78rem;
     font-weight: 700;
     cursor: pointer;
-    transition: transform 150ms ease, border-color 150ms ease;
+    transition: transform 150ms ease, border-color 150ms ease, background-color 150ms ease;
   }
 
   .q-pill:hover {
     transform: translateY(-1px);
   }
 
-  .q-full:hover { border-color: var(--status-full); background: var(--status-full-soft); color: var(--status-full); }
-  .q-half:hover { border-color: var(--status-half); background: var(--status-half-soft); color: var(--status-half); }
-  .q-early:hover { border-color: var(--status-early); background: var(--status-early-soft); color: var(--status-early); }
-  .q-absent:hover { border-color: var(--status-absent); background: var(--status-absent-soft); color: var(--status-absent); }
-  .q-holiday:hover { border-color: var(--status-holiday); background: var(--status-holiday-soft); color: var(--status-holiday); }
-
-  .custom-time-details {
-    margin-top: 0.85rem;
-    padding-top: 0.75rem;
-    border-top: 1px dashed var(--ink-rule);
-    font-size: 0.8rem;
-    color: var(--ink-secondary);
-  }
-
-  .custom-time-details summary {
-    cursor: pointer;
-    font-weight: 700;
-  }
+  .q-full:hover, .q-full.active-pill { border-color: var(--status-full); background: var(--status-full-soft); color: var(--status-full); }
+  .q-half:hover, .q-half.active-pill { border-color: var(--status-half); background: var(--status-half-soft); color: var(--status-half); }
+  .q-early:hover, .q-early.active-pill { border-color: var(--status-early); background: var(--status-early-soft); color: var(--status-early); }
+  .q-absent:hover, .q-absent.active-pill { border-color: var(--status-absent); background: var(--status-absent-soft); color: var(--status-absent); }
+  .q-holiday:hover, .q-holiday.active-pill { border-color: var(--status-holiday); background: var(--status-holiday-soft); color: var(--status-holiday); }
 
   .custom-form {
     display: flex;
     align-items: flex-end;
-    gap: 0.65rem;
+    justify-content: space-between;
+    gap: 0.85rem;
     flex-wrap: wrap;
-    margin-top: 0.75rem;
+    margin-top: 0.9rem;
   }
 
-  .custom-form label {
+  .time-field {
     display: flex;
     flex-direction: column;
-    gap: 0.25rem;
-    font-size: 0.75rem;
+    gap: 0.3rem;
+    font-size: 0.78rem;
     font-weight: 700;
+    color: var(--ink-secondary);
   }
 
-  .custom-form input,
-  .custom-form select {
-    padding: 0.4rem 0.6rem;
+  .time-field input {
+    padding: 0.45rem 0.65rem;
     border-radius: 8px;
-    border: 1px solid var(--ink-stitch);
+    border: 1.5px solid var(--ink-stitch);
     background: var(--bg-paper);
     color: var(--ink-primary);
     font-family: inherit;
-    font-size: 0.82rem;
+    font-size: 0.88rem;
+    font-weight: 700;
+  }
+
+  .time-field input:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .form-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-left: auto;
+  }
+
+  .live-calc-preview {
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: var(--ink-secondary);
+    background: var(--bg-paper-recessed);
+    padding: 0.4rem 0.75rem;
+    border-radius: var(--radius-pill);
   }
 
   .btn-save {
-    padding: 0.42rem 1rem;
+    padding: 0.5rem 1.15rem;
     border-radius: var(--radius-pill);
     border: none;
     background: var(--accent-rose);
-    color: #fff;
+    color: var(--bg-paper-elevated);
     font-family: inherit;
-    font-size: 0.82rem;
+    font-size: 0.88rem;
     font-weight: 700;
     cursor: pointer;
+    transition: transform 150ms ease, filter 150ms ease;
+  }
+
+  .btn-save:hover {
+    filter: brightness(1.06);
+    transform: translateY(-1px);
   }
 
   .move-row {
@@ -833,23 +866,30 @@ const weekdayHeaders = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
     align-items: center;
     gap: 0.5rem;
     flex-wrap: wrap;
-    margin-top: 0.75rem;
+    margin-top: 0.85rem;
+    padding-top: 0.75rem;
+    border-top: 1px dashed var(--ink-rule);
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: var(--ink-secondary);
   }
 
   .move-row input {
-    padding: 0.32rem 0.55rem;
-    border-radius: 7px;
+    padding: 0.35rem 0.6rem;
+    border-radius: 8px;
     border: 1px solid var(--ink-stitch);
     background: var(--bg-paper);
+    color: var(--ink-primary);
     font-family: inherit;
-    font-size: 0.8rem;
+    font-size: 0.78rem;
   }
 
   .btn-ghost-sm {
-    padding: 0.35rem 0.75rem;
-    border-radius: 7px;
+    padding: 0.38rem 0.8rem;
+    border-radius: 8px;
     border: 1px solid var(--ink-stitch);
     background: var(--bg-paper-recessed);
+    color: var(--ink-primary);
     font-family: inherit;
     font-size: 0.78rem;
     font-weight: 700;
@@ -877,7 +917,7 @@ const weekdayHeaders = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
   }
 
   .month-summary {
-    font-size: 0.85rem;
+    font-size: 0.88rem;
     font-weight: 700;
     color: var(--ink-secondary);
   }
@@ -888,7 +928,7 @@ const weekdayHeaders = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
     gap: 8px;
     margin-bottom: 8px;
     text-align: center;
-    font-size: 0.76rem;
+    font-size: 0.78rem;
     font-weight: 800;
     color: var(--ink-muted);
   }
@@ -915,10 +955,11 @@ const weekdayHeaders = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
     transition: transform 150ms cubic-bezier(0.22, 1, 0.36, 1), border-color 150ms ease, box-shadow 150ms ease;
   }
 
-  .day-card:not(:disabled):hover {
+  .day-card:not(:disabled):hover,
+  .day-card.selected-day {
     transform: translateY(-2px);
     border-color: var(--accent-rose);
-    box-shadow: var(--shadow-slot);
+    box-shadow: 0 0 0 2px var(--accent-rose-border), var(--shadow-slot);
   }
 
   .day-card:disabled {
@@ -938,7 +979,7 @@ const weekdayHeaders = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
   }
 
   .state-full {
-    background: #eef8f2;
+    background: var(--status-full-soft);
     border-color: var(--status-full-border);
   }
 
@@ -953,7 +994,8 @@ const weekdayHeaders = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
     border-color: var(--status-half-border);
   }
 
-  .state-early_out {
+  .state-early_out,
+  .state-custom {
     background: var(--status-early-soft);
     border-color: var(--status-early-border);
   }
@@ -995,11 +1037,11 @@ const weekdayHeaders = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
   }
 
   .day-flag {
-    font-size: 0.62rem;
+    font-size: 0.78rem;
     font-weight: 800;
-    padding: 1px 5px;
+    padding: 1px 6px;
     border-radius: var(--radius-pill);
-    color: #fff;
+    color: var(--bg-paper-elevated);
   }
 
   .flag-asof { background: var(--status-full); }
@@ -1008,7 +1050,7 @@ const weekdayHeaders = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
   .status-pill {
     display: inline-block;
-    font-size: 0.74rem;
+    font-size: 0.78rem;
     font-weight: 700;
     line-height: 1.2;
   }
@@ -1030,8 +1072,8 @@ const weekdayHeaders = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
     margin-top: 1.25rem;
     padding-top: 1rem;
     border-top: 1px dashed var(--ink-rule);
-    font-size: 0.8rem;
-    font-weight: 600;
+    font-size: 0.78rem;
+    font-weight: 700;
     color: var(--ink-secondary);
   }
 
@@ -1044,12 +1086,12 @@ const weekdayHeaders = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
   .swatch {
     width: 12px;
     height: 12px;
-    border-radius: 4px;
+    border-radius: 8px;
     display: inline-block;
   }
 
-  .s-full { background: #eef8f2; border: 1px solid var(--status-full-border); }
-  .s-proj { background: #fff; border: 1.5px dashed var(--status-full-border); }
+  .s-full { background: var(--status-full-soft); border: 1px solid var(--status-full-border); }
+  .s-proj { background: var(--bg-paper-elevated); border: 1.5px dashed var(--status-full-border); }
   .s-half { background: var(--status-half-soft); border: 1px solid var(--status-half-border); }
   .s-early { background: var(--status-early-soft); border: 1px solid var(--status-early-border); }
   .s-absent { background: var(--status-absent-soft); border: 1px solid var(--status-absent-border); }
@@ -1057,7 +1099,7 @@ const weekdayHeaders = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
   /* Math Breakdown View */
   .math-intro {
-    font-size: 0.92rem;
+    font-size: 0.88rem;
     color: var(--ink-secondary);
     margin-top: 0.35rem;
     margin-bottom: 1.25rem;
@@ -1083,7 +1125,7 @@ const weekdayHeaders = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
     display: flex;
     flex-direction: column;
     gap: 0.5rem;
-    font-size: 0.9rem;
+    font-size: 0.88rem;
   }
 
   .clean-breakdown li {
@@ -1109,7 +1151,7 @@ const weekdayHeaders = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
     border-top: 1.5px solid var(--ink-rule);
     color: var(--ink-primary);
     font-weight: 800;
-    font-size: 0.96rem;
+    font-size: 0.88rem;
   }
 
   .text-danger { color: var(--status-absent) !important; }
@@ -1134,14 +1176,42 @@ const weekdayHeaders = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
       min-height: 62px;
       padding: 0.35rem;
     }
-
-    .status-pill {
-      font-size: 0.65rem;
-    }
   }
 </style>
 
 <script>
+  // Helper: compute credited hours from 24h HH:MM strings (subtracting 12:00-13:00 lunch)
+  function computeHoursFromTimesClient(timeIn: string, timeOut: string): number {
+    if (!timeIn || !timeOut) return 0;
+    const [h1, m1] = timeIn.split(':').map(Number);
+    const [h2, m2] = timeOut.split(':').map(Number);
+    if (Number.isNaN(h1) || Number.isNaN(h2)) return 0;
+    const inM = h1 * 60 + (m1 || 0);
+    const outM = h2 * 60 + (m2 || 0);
+    if (outM <= inM) return 0;
+    const lStart = 12 * 60;
+    const lEnd = 13 * 60;
+    const overlap = Math.max(0, Math.min(outM, lEnd) - Math.max(inM, lStart));
+    const workedMins = outM - inM - overlap;
+    return Math.round((workedMins / 60) * 100) / 100;
+  }
+
+  // Helper: compute Time Out HH:MM from Time In + Credited Hours (adding 1h lunch if crossing 12:00)
+  function computeTimeOutFromHoursClient(timeIn: string, creditedHours: number): string {
+    const [h1, m1] = (timeIn || '07:00').split(':').map(Number);
+    const startM = (Number.isNaN(h1) ? 7 : h1) * 60 + (m1 || 0);
+    const neededM = Math.round(creditedHours * 60);
+    let outM = startM + neededM;
+    const lStart = 12 * 60;
+    if (startM < lStart && outM > lStart) {
+      outM += 60;
+    }
+    outM = Math.min(23 * 60 + 59, Math.max(startM, outM));
+    const hh = String(Math.floor(outM / 60)).padStart(2, '0');
+    const mm = String(outM % 60).padStart(2, '0');
+    return `${hh}:${mm}`;
+  }
+
   // View Switcher (Calendar Cradle vs. Step-by-Step Math)
   const viewTabs = document.querySelectorAll<HTMLButtonElement>('.view-tab');
   const viewCalendar = document.getElementById('view-calendar');
@@ -1164,49 +1234,121 @@ const weekdayHeaders = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
     });
   });
 
-  // Month Selector Pills
+  // Month Selector Pills with sessionStorage persistence
   const monthBtns = document.querySelectorAll<HTMLButtonElement>('.month-pill');
   const monthSheets = document.querySelectorAll<HTMLElement>('.month-sheet');
   const monthsGrid = document.getElementById('months-grid');
 
+  function activateMonthTab(selected: string) {
+    monthBtns.forEach((b) => {
+      const isMatch = b.dataset.monthBtn === selected;
+      b.classList.toggle('active', isMatch);
+      b.setAttribute('aria-selected', isMatch ? 'true' : 'false');
+    });
+
+    if (selected === 'all') {
+      monthsGrid?.classList.add('all-months-grid');
+      monthSheets.forEach((s) => (s.hidden = false));
+    } else {
+      monthsGrid?.classList.remove('all-months-grid');
+      monthSheets.forEach((s) => {
+        s.hidden = s.dataset.monthSheet !== selected;
+      });
+    }
+    sessionStorage.setItem('ojt_active_month', selected);
+  }
+
   monthBtns.forEach((btn) => {
     btn.addEventListener('click', () => {
-      monthBtns.forEach((b) => {
-        b.classList.remove('active');
-        b.setAttribute('aria-selected', 'false');
-      });
-      btn.classList.add('active');
-      btn.setAttribute('aria-selected', 'true');
-
-      const selected = btn.dataset.monthBtn;
-      if (selected === 'all') {
-        monthsGrid?.classList.add('all-months-grid');
-        monthSheets.forEach((s) => (s.hidden = false));
-      } else {
-        monthsGrid?.classList.remove('all-months-grid');
-        monthSheets.forEach((s) => {
-          s.hidden = s.dataset.monthSheet !== selected;
-        });
-      }
+      activateMonthTab(btn.dataset.monthBtn || '9');
     });
   });
 
-  // Day Editor Interactions
+  // Restore saved month tab on page load
+  const savedMonth = sessionStorage.getItem('ojt_active_month');
+  if (savedMonth) {
+    activateMonthTab(savedMonth);
+  }
+
+  // Day Editor Elements
   const editor = document.getElementById('day-editor');
   const editorTitle = document.getElementById('editor-title');
   const editorSub = document.getElementById('editor-sub');
   const btnCloseEditor = document.getElementById('btn-close-editor');
   const inputDate = document.getElementById('input-date') as HTMLInputElement | null;
-  const inputStatus = document.getElementById('input-status') as HTMLSelectElement | null;
+  const inputStatus = document.getElementById('input-status') as HTMLInputElement | null;
   const inputTimeIn = document.getElementById('input-time-in') as HTMLInputElement | null;
   const inputTimeOut = document.getElementById('input-time-out') as HTMLInputElement | null;
   const inputCredited = document.getElementById('input-credited') as HTMLInputElement | null;
+  const liveCalcPreview = document.getElementById('live-calc-preview');
   const moveRow = document.getElementById('move-row');
   const inputMoveTo = document.getElementById('input-move-to') as HTMLInputElement | null;
   const btnMove = document.getElementById('btn-move');
   const customForm = document.getElementById('custom-form');
+  const quickPills = document.querySelectorAll<HTMLButtonElement>('[data-quick-status]');
+  const allDayCards = document.querySelectorAll<HTMLButtonElement>('.day-card:not(:disabled)');
 
   let selectedDate = '';
+
+  function highlightActiveQuickPill(status: string) {
+    quickPills.forEach((pill) => {
+      pill.classList.toggle('active-pill', pill.dataset.quickStatus === status);
+    });
+  }
+
+  function updateLivePreview(credited: number, status: string) {
+    if (!liveCalcPreview) return;
+    if (status === 'holiday') {
+      liveCalcPreview.textContent = 'Holiday (excluded from workdays)';
+      return;
+    }
+    const short = Math.max(0, Math.round((8.8 - credited) * 100) / 100);
+    liveCalcPreview.textContent = `${credited.toFixed(2).replace(/\.00$/, '.0')}h credited (${short.toFixed(2).replace(/\.00$/, '.0')}h short)`;
+  }
+
+  function syncFromTimeInputs() {
+    if (!inputTimeIn || !inputTimeOut || !inputCredited || !inputStatus) return;
+    const hrs = computeHoursFromTimesClient(inputTimeIn.value, inputTimeOut.value);
+    inputCredited.value = String(hrs);
+
+    // Infer matching status from times/hours
+    if (inputTimeIn.value === '07:00' && inputTimeOut.value === '16:48' && Math.abs(hrs - 8.8) < 0.05) {
+      inputStatus.value = 'full';
+    } else if (hrs === 0) {
+      inputStatus.value = 'absent';
+    } else if (inputTimeOut.value === '13:00' || inputTimeOut.value === '12:00' || Math.abs(hrs - 5.0) < 0.05) {
+      inputStatus.value = 'half_day';
+    } else {
+      inputStatus.value = 'early_out';
+    }
+
+    highlightActiveQuickPill(inputStatus.value);
+    updateLivePreview(hrs, inputStatus.value);
+  }
+
+  inputTimeIn?.addEventListener('input', syncFromTimeInputs);
+  inputTimeIn?.addEventListener('change', syncFromTimeInputs);
+  inputTimeOut?.addEventListener('input', syncFromTimeInputs);
+  inputTimeOut?.addEventListener('change', syncFromTimeInputs);
+
+  inputCredited?.addEventListener('input', () => {
+    if (!inputCredited || !inputTimeIn || !inputTimeOut || !inputStatus) return;
+    const hrs = Math.max(0, parseFloat(inputCredited.value) || 0);
+    if (hrs === 0) {
+      inputStatus.value = 'absent';
+    } else {
+      inputTimeOut.value = computeTimeOutFromHoursClient(inputTimeIn.value || '07:00', hrs);
+      if (Math.abs(hrs - 8.8) < 0.05) {
+        inputStatus.value = 'full';
+      } else if (Math.abs(hrs - 5.0) < 0.05) {
+        inputStatus.value = 'half_day';
+      } else {
+        inputStatus.value = 'early_out';
+      }
+    }
+    highlightActiveQuickPill(inputStatus.value);
+    updateLivePreview(hrs, inputStatus.value);
+  });
 
   async function postAttendance(payload: Record<string, unknown>) {
     const res = await fetch('/api/attendance', {
@@ -1214,13 +1356,22 @@ const weekdayHeaders = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
     });
-    if (res.ok) window.location.reload();
+    if (res.ok) {
+      window.location.reload();
+    }
   }
 
-  document.querySelectorAll<HTMLButtonElement>('.day-card:not(:disabled)').forEach((card) => {
+  allDayCards.forEach((card) => {
     card.addEventListener('click', () => {
       selectedDate = card.dataset.date || '';
       if (!selectedDate || !editor) return;
+
+      allDayCards.forEach((c) => c.classList.remove('selected-day'));
+      card.classList.add('selected-day');
+
+      if (card.dataset.month && sessionStorage.getItem('ojt_active_month') !== 'all') {
+        sessionStorage.setItem('ojt_active_month', card.dataset.month);
+      }
 
       const [y, m, d] = selectedDate.split('-').map(Number);
       const nice = new Date(Date.UTC(y, m - 1, d)).toLocaleDateString('en-US', {
@@ -1242,9 +1393,34 @@ const weekdayHeaders = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
       if (inputDate) inputDate.value = selectedDate;
       if (inputStatus) inputStatus.value = normStatus;
-      if (inputTimeIn) inputTimeIn.value = card.dataset.timeIn?.includes('M') ? '07:00' : (card.dataset.timeIn || '07:00');
-      if (inputTimeOut) inputTimeOut.value = card.dataset.timeOut?.includes('M') ? '16:48' : (card.dataset.timeOut || '16:48');
-      if (inputCredited) inputCredited.value = card.dataset.credited || '8.8';
+
+      const rawIn = card.dataset.timeIn || '07:00';
+      const rawOut = card.dataset.timeOut || '16:48';
+      const cleanIn = /^\d{2}:\d{2}$/.test(rawIn) ? rawIn : '07:00';
+      const cleanOut = /^\d{2}:\d{2}$/.test(rawOut)
+        ? rawOut
+        : normStatus === 'half_day'
+          ? '13:00'
+          : normStatus === 'early_out'
+            ? '15:12'
+            : '16:48';
+
+      if (inputTimeIn) {
+        inputTimeIn.value = cleanIn;
+        inputTimeIn.disabled = normStatus === 'absent' || normStatus === 'holiday';
+      }
+      if (inputTimeOut) {
+        inputTimeOut.value = cleanOut;
+        inputTimeOut.disabled = normStatus === 'absent' || normStatus === 'holiday';
+      }
+
+      const credVal = parseFloat(card.dataset.credited || '8.8');
+      if (inputCredited) {
+        inputCredited.value = String(credVal);
+      }
+
+      highlightActiveQuickPill(normStatus);
+      updateLivePreview(credVal, normStatus);
 
       if (moveRow && inputMoveTo) {
         moveRow.hidden = normStatus === 'full';
@@ -1258,33 +1434,59 @@ const weekdayHeaders = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
   btnCloseEditor?.addEventListener('click', () => {
     if (editor) editor.hidden = true;
+    allDayCards.forEach((c) => c.classList.remove('selected-day'));
   });
 
-  // One-click status pills inside the editor
-  document.querySelectorAll<HTMLButtonElement>('[data-quick-status]').forEach((btn) => {
+  // One-click status preset pills inside the editor
+  quickPills.forEach((btn) => {
     btn.addEventListener('click', async () => {
       if (!selectedDate) return;
+      const preset = btn.dataset.quickStatus || 'full';
+      let tIn: string | null = '07:00';
+      let tOut: string | null = '16:48';
+      let cred = 8.8;
+
+      if (preset === 'half_day') {
+        tOut = '13:00';
+        cred = 5.0;
+      } else if (preset === 'early_out') {
+        tOut = '15:12';
+        cred = 7.2;
+      } else if (preset === 'absent' || preset === 'holiday') {
+        tIn = null;
+        tOut = null;
+        cred = 0.0;
+      }
+
       await postAttendance({
         date: selectedDate,
-        status: btn.dataset.quickStatus,
+        status: preset,
+        time_in: tIn,
+        time_out: tOut,
+        credited_hours: cred,
       });
     });
   });
 
+  // Saving Custom Time / Hours
   customForm?.addEventListener('submit', async (e) => {
     e.preventDefault();
     if (!selectedDate || !inputStatus || !inputTimeIn || !inputTimeOut || !inputCredited) return;
+
+    const cred = parseFloat(inputCredited.value);
     await postAttendance({
       date: selectedDate,
       status: inputStatus.value,
-      time_in: inputTimeIn.value,
-      time_out: inputTimeOut.value,
-      credited_hours: parseFloat(inputCredited.value),
+      time_in: inputTimeIn.disabled ? null : inputTimeIn.value,
+      time_out: inputTimeOut.disabled ? null : inputTimeOut.value,
+      credited_hours: Number.isNaN(cred) ? 8.8 : cred,
     });
   });
 
   btnMove?.addEventListener('click', async () => {
     if (!selectedDate || !inputMoveTo || !inputMoveTo.value || inputMoveTo.value === selectedDate) return;
+    const targetMonth = String(Number(inputMoveTo.value.split('-')[1]) - 1);
+    sessionStorage.setItem('ojt_active_month', targetMonth);
     await postAttendance({
       action: 'move',
       fromDate: selectedDate,
