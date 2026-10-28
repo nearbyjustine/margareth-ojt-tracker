@@ -5,6 +5,7 @@ import { buildOjtComputation, formatTime12h } from '../lib/ojt-engine';
 
 const { settings, logs } = await getOjtData(Astro.locals);
 const summary = buildOjtComputation(settings, logs);
+Astro.response.headers.set('Cache-Control', 'no-store, max-age=0');
 
 const weekdayHeaders = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 ---
@@ -43,7 +44,7 @@ const weekdayHeaders = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
     <section class="hero-card" aria-label="OJT Progress Summary">
       <div class="hero-metrics">
         <div class="metric-block">
-          <span class="metric-label">Rendered (as of Oct 26)</span>
+          <span class="metric-label">Rendered (as of {summary.asOfShort})</span>
           <div class="metric-main tabular">
             <strong class="metric-big text-rose">{summary.renderedHoursAsOf.toFixed(1)}</strong>
             <span class="metric-of">/ 480 hrs</span>
@@ -54,7 +55,7 @@ const weekdayHeaders = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
         <div class="metric-divider" aria-hidden="true"></div>
 
         <div class="metric-block">
-          <span class="metric-label">Remaining (from Oct 27)</span>
+          <span class="metric-label">Remaining (from {summary.nextStartShort})</span>
           <div class="metric-main tabular">
             <strong class="metric-big">{summary.remainingHoursFromOct27.toFixed(1)}</strong>
             <span class="metric-of">hrs left</span>
@@ -330,7 +331,7 @@ const weekdayHeaders = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
                       </div>
                       {day.isAsOfDate && (
                         <span class="day-flag flag-asof">
-                          <span class="m-full">Oct 26</span>
+                          <span class="m-full">{summary.asOfShort}</span>
                           <span class="m-short">As Of</span>
                         </span>
                       )}
@@ -421,7 +422,7 @@ const weekdayHeaders = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
       <div class="math-steps-list">
         <div class="math-step-box">
-          <h3>Scheduled Workdays Through October 26</h3>
+          <h3>Scheduled Workdays Through {summary.asOfLong}</h3>
           <ul class="clean-breakdown tabular">
             <li>
               <span>August 24 – 31 (excludes Aug 31 National Heroes Day)</span>
@@ -432,9 +433,15 @@ const weekdayHeaders = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
               <strong>{summary.septemberScheduledDays} days ({(summary.septemberScheduledDays * 8.8).toFixed(1)} hrs)</strong>
             </li>
             <li>
-              <span>October 1 – 26</span>
+              <span>October (through {summary.asOfShort})</span>
               <strong>{summary.octoberScheduledDaysThroughAsOf} days ({(summary.octoberScheduledDaysThroughAsOf * 8.8).toFixed(1)} hrs)</strong>
             </li>
+            {summary.novemberScheduledDaysThroughAsOf > 0 && (
+              <li>
+                <span>November (through {summary.asOfShort})</span>
+                <strong>{summary.novemberScheduledDaysThroughAsOf} days ({(summary.novemberScheduledDaysThroughAsOf * 8.8).toFixed(1)} hrs)</strong>
+              </li>
+            )}
             <li class="total-line">
               <span>Gross Scheduled ({summary.scheduledDaysThroughAsOf} days &times; 8.8 hrs)</span>
               <strong>{summary.grossHoursThroughAsOf.toFixed(1)} hrs</strong>
@@ -443,7 +450,7 @@ const weekdayHeaders = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
         </div>
 
         <div class="math-step-box">
-          <h3>Minus Absences &amp; Undertime (Through Oct 26)</h3>
+          <h3>Minus Absences &amp; Undertime (Through {summary.asOfShort})</h3>
           <ul class="clean-breakdown tabular">
             <li>
               <span>{summary.absencesCount} Full Absences (0h credited each)</span>
@@ -468,14 +475,14 @@ const weekdayHeaders = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
               <strong class="text-danger">&minus;{summary.totalDeductionsThroughAsOf.toFixed(1)} hrs</strong>
             </li>
             <li class="grand-line">
-              <span>Hours Rendered as of October 26 ({summary.grossHoursThroughAsOf.toFixed(1)} &minus; {summary.totalDeductionsThroughAsOf.toFixed(1)})</span>
+              <span>Hours Rendered as of {summary.asOfLong} ({summary.grossHoursThroughAsOf.toFixed(1)} &minus; {summary.totalDeductionsThroughAsOf.toFixed(1)})</span>
               <strong class="text-rose">{summary.renderedHoursAsOf.toFixed(1)} hrs</strong>
             </li>
           </ul>
         </div>
 
         <div class="math-step-box">
-          <h3>Remaining Hours Starting October 27</h3>
+          <h3>Remaining Hours Starting {summary.nextStartLong}</h3>
           <ul class="clean-breakdown tabular">
             <li>
               <span>Hours Needed to Reach 480.0 hrs (480.0 &minus; {summary.renderedHoursAsOf.toFixed(1)})</span>

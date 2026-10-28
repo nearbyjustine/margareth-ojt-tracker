@@ -73,17 +73,23 @@ export interface MonthCradle {
 export interface OjtComputationSummary {
   settings: OjtSettings;
   asOfDate: string;
-  nextStartDate: string; // 2026-10-27
+  asOfShort: string; // e.g. "Oct 27"
+  asOfLong: string; // e.g. "October 27"
+  currentDate: string; // e.g. "2026-10-28"
+  nextStartDate: string; // e.g. "2026-10-28"
+  nextStartShort: string; // e.g. "Oct 28"
+  nextStartLong: string; // e.g. "October 28"
   // Step 1: Base requirement
   requiredHours: number;
   dailyHours: number;
   baseRequiredDays: number; // 480 / 8.8 = 54.5455
-  // Step 2: Through Oct 26
-  scheduledDaysThroughAsOf: number; // 45
-  augustScheduledDays: number; // 5 (Aug 24-31 = 6 weekdays - 1 holiday)
-  septemberScheduledDays: number; // 22
-  octoberScheduledDaysThroughAsOf: number; // 18
-  grossHoursThroughAsOf: number; // 396.0
+  // Step 2: Through asOfDate
+  scheduledDaysThroughAsOf: number;
+  augustScheduledDays: number;
+  septemberScheduledDays: number;
+  octoberScheduledDaysThroughAsOf: number;
+  novemberScheduledDaysThroughAsOf: number;
+  grossHoursThroughAsOf: number;
   absencesCount: number;
   absencesHoursShort: number; // 26.4
   halfDaysCount: number;
@@ -277,6 +283,66 @@ export function formatNiceDate(isoDate: string): string {
   });
 }
 
+export function formatShortMonthDay(isoDate: string): string {
+  const [y, m, d] = isoDate.split('-').map(Number);
+  const dt = new Date(Date.UTC(y, m - 1, d));
+  return dt.toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    timeZone: 'UTC',
+  });
+}
+
+export function formatLongMonthDay(isoDate: string): string {
+  const [y, m, d] = isoDate.split('-').map(Number);
+  const dt = new Date(Date.UTC(y, m - 1, d));
+  return dt.toLocaleDateString('en-US', {
+    month: 'long',
+    day: 'numeric',
+    timeZone: 'UTC',
+  });
+}
+
+function toIsoDateUTC(dt: Date): string {
+  const y = dt.getUTCFullYear();
+  const m = String(dt.getUTCMonth() + 1).padStart(2, '0');
+  const d = String(dt.getUTCDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
+export function getLiveManilaReferenceDates(scheduleOut = '16:48'): {
+  asOfDate: string;
+  currentDate: string;
+  nextStartDate: string;
+} {
+  // Compute current date & time in Asia/Manila (UTC+8)
+  const manilaMs = Date.now() + 8 * 60 * 60 * 1000;
+  const manilaNow = new Date(manilaMs);
+  const todayIso = toIsoDateUTC(manilaNow);
+
+  const [outH, outM] = scheduleOut.split(':').map(Number);
+  const shiftEndMins = (outH || 16) * 60 + (outM || 48);
+  const currentMins = manilaNow.getUTCHours() * 60 + manilaNow.getUTCMinutes();
+
+  if (currentMins >= shiftEndMins) {
+    // Shift has ended for today in Manila time: today is completed!
+    const tomorrow = new Date(manilaMs + 24 * 60 * 60 * 1000);
+    return {
+      asOfDate: todayIso,
+      currentDate: todayIso,
+      nextStartDate: toIsoDateUTC(tomorrow),
+    };
+  } else {
+    // Shift is still ongoing or hasn't started yet today: completed through yesterday
+    const yesterday = new Date(manilaMs - 24 * 60 * 60 * 1000);
+    return {
+      asOfDate: toIsoDateUTC(yesterday),
+      currentDate: todayIso,
+      nextStartDate: todayIso,
+    };
+  }
+}
+
 export function buildOjtComputation(
   settings: OjtSettings,
   logs: AttendanceLog[]
@@ -288,8 +354,10 @@ export function buildOjtComputation(
 
   const daily = settings.daily_hours;
   const target = settings.target_hours;
-  const asOf = settings.as_of_date; // '2026-10-26'
-  const currentRefDate = '2026-10-27';
+  const liveDates = getLiveManilaReferenceDates(settings.schedule_out);
+  const asOf = liveDates.asOfDate;
+  const currentRefDate = liveDates.currentDate;
+  const nextStartDate = liveDates.nextStartDate;
 
   // Generate calendar days for Aug, Sep, Oct, Nov 2026
   const monthSpecs = [
@@ -306,10 +374,12 @@ export function buildOjtComputation(
   let completionDate: string | null = null;
   let finalDayHoursNeeded = 0;
 
-  // Counters for breakdown through asOfDate (Oct 26)
+  // Counters for breakdown through asOfDate
   let augustScheduledDays = 0;
   let septemberScheduledDays = 0;
   let octoberScheduledDaysThroughAsOf = 0;
+  let novemberScheduledDaysThroughAsOf = 0;
+  let lastWorkdayThroughAsOf = asOf;
   let absencesCount = 0;
   let absencesHoursShort = 0;
   let halfDaysCount = 0;
@@ -444,6 +514,8 @@ export function buildOjtComputation(
         if (mSpec.month === 7) augustScheduledDays++;
         if (mSpec.month === 8) septemberScheduledDays++;
         if (mSpec.month === 9) octoberScheduledDaysThroughAsOf++;
+        if (mSpec.month === 10) novemberScheduledDaysThroughAsOf++;
+        lastWorkdayThroughAsOf = iso;
       }
 
       let status: DayCell['status'] = log ? log.status : iso <= asOf ? 'full' : 'projected_full';
@@ -554,8 +626,18 @@ export function buildOjtComputation(
     });
   }
 
+  // Ensure the As-Of badge sits on the last scheduled workday <= asOf
+  for (const m of months) {
+    for (const d of m.days) {
+      d.isAsOfDate = d.date === lastWorkdayThroughAsOf;
+    }
+  }
+
   const scheduledDaysThroughAsOf =
-    augustScheduledDays + septemberScheduledDays + octoberScheduledDaysThroughAsOf;
+    augustScheduledDays +
+    septemberScheduledDays +
+    octoberScheduledDaysThroughAsOf +
+    novemberScheduledDaysThroughAsOf;
   const grossHoursThroughAsOf = round1(scheduledDaysThroughAsOf * daily);
   const totalDeductionsThroughAsOf = round1(
     absencesHoursShort + halfDaysHoursShort + earlyOutsHoursShort + customShortHours
@@ -589,8 +671,13 @@ export function buildOjtComputation(
 
   return {
     settings,
-    asOfDate: asOf,
-    nextStartDate: currentRefDate,
+    asOfDate: lastWorkdayThroughAsOf,
+    asOfShort: formatShortMonthDay(lastWorkdayThroughAsOf),
+    asOfLong: formatLongMonthDay(lastWorkdayThroughAsOf),
+    currentDate: currentRefDate,
+    nextStartDate,
+    nextStartShort: formatShortMonthDay(nextStartDate),
+    nextStartLong: formatLongMonthDay(nextStartDate),
     requiredHours: target,
     dailyHours: daily,
     baseRequiredDays: Math.round((target / daily) * 10000) / 10000,
@@ -598,6 +685,7 @@ export function buildOjtComputation(
     augustScheduledDays,
     septemberScheduledDays,
     octoberScheduledDaysThroughAsOf,
+    novemberScheduledDaysThroughAsOf,
     grossHoursThroughAsOf,
     absencesCount,
     absencesHoursShort,
